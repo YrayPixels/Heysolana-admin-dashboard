@@ -1,0 +1,100 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    
+    --card: 240 10% 6.9%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 262 100% 64%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 262 100% 64%;
+    
+    --radius: 0.5rem;
+    
+    --sidebar-background: 240 10% 4.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 262 100% 64%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 262 100% 64%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border selection:bg-solana/20 selection:text-solana;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased overflow-x-hidden;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .glass-morphism {
+    @apply backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.3)];
+  }
+  
+  .glass-card {
+    @apply backdrop-blur-xl bg-black/40 border border-white/10 rounded-lg;
+  }
+  
+  .text-gradient {
+    @apply bg-gradient-to-br from-white via-white/90 to-white/70 bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-solana {
+    @apply bg-gradient-to-br from-solana via-solana/80 to-purple-400 bg-clip-text text-transparent;
+  }
+
+  .page-transitions {
+    @apply transition-all duration-500 ease-in-out;
+  }
+  
+  .animate-in-sequence > *:nth-child(1) { animation-delay: 0ms; }
+  .animate-in-sequence > *:nth-child(2) { animation-delay: 100ms; }
+  .animate-in-sequence > *:nth-child(3) { animation-delay: 200ms; }
+  .animate-in-sequence > *:nth-child(4) { animation-delay: 300ms; }
+  .animate-in-sequence > *:nth-child(5) { animation-delay: 400ms; }
+  .animate-in-sequence > *:nth-child(6) { animation-delay: 500ms; }
+}
