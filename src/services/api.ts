@@ -63,6 +63,7 @@ export const addToWaitlist = async (userData: Omit<WaitlistUser, 'id'>): Promise
       throw new Error(`Failed to add to waitlist: ${response.statusText}`);
     }
     
+    
     toast.success('User added to waitlist successfully');
     return true;
   } catch (error) {
