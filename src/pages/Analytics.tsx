@@ -30,7 +30,12 @@ import {
   Users,
   Eye,
 } from "lucide-react";
-import { getTrackingData, TrackingData } from "@/services/api";
+import {
+  getTrackingData,
+  TrackingData,
+  DateValueData,
+  NameValueData,
+} from "@/services/api";
 import GlassCard from "@/components/ui-custom/GlassCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -120,9 +125,35 @@ const Analytics: React.FC = () => {
     ) || 0;
   const getTotalTokenUsage = () =>
     trackingData?.token_usage_by_token_name?.reduce(
-      (sum, item) => sum + (Number(item.total_usage) || 0),
+      (acc, item) => acc + (item.total_usage || 0),
       0
     ) || 0;
+
+  // Helper function to calculate Y-axis domain for better scaling
+  const getYAxisDomain = (
+    data: DateValueData[] | NameValueData[],
+    dataKey: string
+  ) => {
+    if (!data || data.length === 0) return [0, 10];
+
+    const values = data.map((item) => {
+      if (dataKey === "total_calls") return item.total_calls || 0;
+      if (dataKey === "total_clicks") return item.total_clicks || 0;
+      if (dataKey === "total_open_count") return item.total_open_count || 0;
+      if (dataKey === "total_usage") return item.total_usage || 0;
+      return 0;
+    });
+
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+
+    // Add some padding to the max value (10% more than max, minimum 5)
+    const padding = Math.max(Math.ceil(maxValue * 0.1), 5);
+    const domainMax = maxValue + padding;
+    const domainMin = Math.max(0, minValue - Math.ceil(padding / 2));
+
+    return [domainMin, domainMax];
+  };
 
   if (loading) {
     return (
@@ -212,7 +243,15 @@ const Analytics: React.FC = () => {
                     stroke="rgba(255,255,255,0.1)"
                   />
                   <XAxis dataKey="date" stroke="#666" fontSize={12} />
-                  <YAxis stroke="#666" fontSize={12} />
+                  <YAxis
+                    stroke="#666"
+                    fontSize={12}
+                    domain={getYAxisDomain(
+                      trackingData?.button_clicks_by_date || [],
+                      "total_clicks"
+                    )}
+                    tickFormatter={(value) => value.toLocaleString()}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -258,7 +297,15 @@ const Analytics: React.FC = () => {
                     stroke="rgba(255,255,255,0.1)"
                   />
                   <XAxis dataKey="date" stroke="#666" fontSize={12} />
-                  <YAxis stroke="#666" fontSize={12} />
+                  <YAxis
+                    stroke="#666"
+                    fontSize={12}
+                    domain={getYAxisDomain(
+                      trackingData?.tool_calls_by_date || [],
+                      "total_calls"
+                    )}
+                    tickFormatter={(value) => value.toLocaleString()}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -296,7 +343,15 @@ const Analytics: React.FC = () => {
                     stroke="rgba(255,255,255,0.1)"
                   />
                   <XAxis dataKey="date" stroke="#666" fontSize={12} />
-                  <YAxis stroke="#666" fontSize={12} />
+                  <YAxis
+                    stroke="#666"
+                    fontSize={12}
+                    domain={getYAxisDomain(
+                      trackingData?.app_open_count_by_date || [],
+                      "total_open_count"
+                    )}
+                    tickFormatter={(value) => value.toLocaleString()}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -328,7 +383,15 @@ const Analytics: React.FC = () => {
                     stroke="rgba(255,255,255,0.1)"
                   />
                   <XAxis dataKey="date" stroke="#666" fontSize={12} />
-                  <YAxis stroke="#666" fontSize={12} />
+                  <YAxis
+                    stroke="#666"
+                    fontSize={12}
+                    domain={getYAxisDomain(
+                      trackingData?.page_open_count_by_date || [],
+                      "total_open_count"
+                    )}
+                    tickFormatter={(value) => value.toLocaleString()}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -371,42 +434,97 @@ const Analytics: React.FC = () => {
                 Button Clicks Distribution
               </h3>
             </div>
-            <div className="h-64">
+            <div className="h-64 flex">
               {trackingData?.button_clicks_by_button_name?.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={trackingData.button_clicks_by_button_name}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ button_name, total_clicks }) =>
-                        `${button_name}: ${total_clicks}`
-                      }
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="total_clicks"
-                    >
-                      {trackingData.button_clicks_by_button_name.map(
-                        (entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
+                <>
+                  {/* Pie Chart */}
+                  <div className="flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={trackingData.button_clicks_by_button_name}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={70}
+                          fill="#8884d8"
+                          dataKey="total_clicks"
+                        >
+                          {trackingData.button_clicks_by_button_name.map(
+                            (entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            )
+                          )}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            borderColor: "rgba(255, 255, 255, 0.1)",
+                            borderRadius: "8px",
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Button Legend */}
+                  <div className="flex-1 pl-4 overflow-y-auto">
+                    <div className="space-y-2">
+                      {trackingData.button_clicks_by_button_name
+                        .sort(
+                          (a, b) =>
+                            (b.total_clicks || 0) - (a.total_clicks || 0)
                         )
-                      )}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(0, 0, 0, 0.8)",
-                        borderColor: "rgba(255, 255, 255, 0.1)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                        .map((button, index) => {
+                          const totalClicks =
+                            trackingData.button_clicks_by_button_name.reduce(
+                              (sum, b) => sum + (b.total_clicks || 0),
+                              0
+                            );
+                          const percentage =
+                            totalClicks > 0
+                              ? (
+                                  ((button.total_clicks || 0) / totalClicks) *
+                                  100
+                                ).toFixed(1)
+                              : "0.0";
+
+                          return (
+                            <div
+                              key={button.button_name}
+                              className="flex items-center justify-between py-1"
+                            >
+                              <div className="flex items-center">
+                                <div
+                                  className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
+                                  style={{
+                                    backgroundColor:
+                                      COLORS[index % COLORS.length],
+                                  }}
+                                />
+                                <span className="text-sm text-gray-300 truncate">
+                                  {button.button_name}
+                                </span>
+                              </div>
+                              <div className="text-right ml-2">
+                                <div className="text-sm font-medium text-white">
+                                  {percentage}%
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                  {(button.total_clicks || 0).toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="flex items-center justify-center h-full text-gray-400 w-full">
                   <div className="text-center">
                     <PieChartIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>No button click data available</p>
@@ -433,12 +551,21 @@ const Analytics: React.FC = () => {
                       strokeDasharray="3 3"
                       stroke="rgba(255,255,255,0.1)"
                     />
-                    <XAxis type="number" stroke="#666" fontSize={12} />
+                    <XAxis
+                      type="number"
+                      stroke="#666"
+                      fontSize={12}
+                      domain={getYAxisDomain(
+                        trackingData?.tool_calls_by_tool_name || [],
+                        "total_calls"
+                      )}
+                      tickFormatter={(value) => value.toLocaleString()}
+                    />
                     <YAxis
                       type="category"
                       dataKey="tool_name"
                       stroke="#666"
-                      fontSize={12}
+                      fontSize={10}
                       width={100}
                     />
                     <Tooltip

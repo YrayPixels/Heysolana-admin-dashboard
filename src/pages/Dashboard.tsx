@@ -303,37 +303,91 @@ const Dashboard: React.FC = () => {
             <h3 className="text-lg font-medium mb-4">
               Geographic Distribution
             </h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {pieChartData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      borderColor: "rgba(255, 255, 255, 0.1)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="h-64 flex">
+              {pieChartData.length > 0 ? (
+                <>
+                  {/* Pie Chart */}
+                  <div className="flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={70}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            borderColor: "rgba(255, 255, 255, 0.1)",
+                            borderRadius: "8px",
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Country Legend */}
+                  <div className="flex-1 pl-4 overflow-y-auto">
+                    <div className="space-y-2">
+                      {pieChartData
+                        .sort((a, b) => b.value - a.value)
+                        .map((country, index) => {
+                          const totalUsers = pieChartData.reduce(
+                            (sum, c) => sum + c.value,
+                            0
+                          );
+                          const percentage = (
+                            (country.value / totalUsers) *
+                            100
+                          ).toFixed(1);
+
+                          return (
+                            <div
+                              key={country.name}
+                              className="flex items-center justify-between py-1"
+                            >
+                              <div className="flex items-center">
+                                <div
+                                  className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
+                                  style={{
+                                    backgroundColor:
+                                      COLORS[index % COLORS.length],
+                                  }}
+                                />
+                                <span className="text-sm text-gray-300 truncate">
+                                  {country.name}
+                                </span>
+                              </div>
+                              <div className="text-right ml-2">
+                                <div className="text-sm font-medium text-white">
+                                  {percentage}%
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                  {country.value.toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400 w-full">
+                  No geographic data available
+                </div>
+              )}
             </div>
           </GlassCard>
 
