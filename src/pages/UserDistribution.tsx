@@ -136,6 +136,21 @@ const UserDistribution: React.FC = () => {
     }));
   };
 
+  // Calculate dynamic Y-axis domains
+  const getYAxisDomain = (data: Array<{ registrations: number }>) => {
+    if (!data || data.length === 0) return [0, 10];
+
+    const maxValue = Math.max(...data.map((item) => item.registrations));
+    const minValue = Math.min(...data.map((item) => item.registrations));
+
+    // Add some padding to the max value (10% more than max, minimum 5)
+    const padding = Math.max(Math.ceil(maxValue * 0.1), 5);
+    const domainMax = maxValue + padding;
+    const domainMin = Math.max(0, minValue - Math.ceil(padding / 2));
+
+    return [domainMin, domainMax];
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
