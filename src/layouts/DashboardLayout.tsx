@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   User,
+  Users,
   Volume2,
   X,
   TrendingUp,
@@ -57,6 +58,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Analytics",
       icon: <TrendingUp className="h-5 w-5" />,
       path: "/analytics",
+    },
+    {
+      name: "User Distribution",
+      icon: <Users className="h-5 w-5" />,
+      path: "/user-distribution",
     },
     {
       name: "Waitlist",

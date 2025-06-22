@@ -306,3 +306,66 @@ export const fetchAdmins = async (): Promise<UserProfile[]> => {
     return [];
   }
 };
+
+// User Distribution Analytics Interfaces
+export interface CountryDistribution {
+  country: string;
+  user_count: number;
+}
+
+export interface VerificationStatus {
+  status: string;
+  user_count: number;
+}
+
+export interface WalletStatus {
+  wallet_status: string;
+  user_count: number;
+}
+
+export interface PinStatus {
+  pin_status: string;
+  user_count: number;
+}
+
+export interface RegistrationTrend {
+  date: string;
+  registrations: number;
+}
+
+export interface MonthlyRegistration {
+  year: number;
+  month: number;
+  registrations: number;
+}
+
+export interface UserDistributionData {
+  country_distribution: CountryDistribution[];
+  registration_trends: RegistrationTrend[];
+  monthly_registrations: MonthlyRegistration[];
+  verification_status: VerificationStatus[];
+  wallet_status: WalletStatus[];
+  pin_status: PinStatus[];
+  total_users: number;
+  recent_registrations: number;
+  growth_rate: number;
+}
+
+// Get user distribution analytics
+export const getUserDistributionAnalytics = async (): Promise<UserDistributionData | null> => {
+  try {
+    console.log("Fetching user distribution analytics from", `${API_BASE_URL}/user-analytics`);
+    const response = await fetch(`${API_BASE_URL}/user-analytics`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user distribution analytics: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log("User distribution analytics data:", data);
+    return data;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};

@@ -8,6 +8,7 @@ import { AuthProvider } from "./components/AuthContext";
 import SignIn from "./pages/SignIn";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
+import UserDistribution from "./pages/UserDistribution";
 import WaitlistPage from "./pages/WaitlistPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
@@ -50,6 +51,15 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Analytics />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/user-distribution"
+              element={
+                <ProtectedRoute>
+                  <UserDistribution />
                 </ProtectedRoute>
               }
             />

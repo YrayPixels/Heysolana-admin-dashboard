@@ -71,22 +71,22 @@ const Dashboard: React.FC = () => {
   // Calculate analytics metrics
   const getTotalClicks = () =>
     trackingData?.button_clicks_by_button_name?.reduce(
-      (sum, item) => sum + (item.total_clicks || 0),
+      (sum, item) => sum + (Number(item.total_clicks) || 0),
       0
     ) || 0;
   const getTotalToolCalls = () =>
     trackingData?.tool_calls_by_tool_name?.reduce(
-      (sum, item) => sum + (item.total_calls || 0),
+      (sum, item) => sum + (Number(item.total_calls) || 0),
       0
     ) || 0;
   const getTotalPageViews = () =>
     trackingData?.page_open_count_by_page_name?.reduce(
-      (sum, item) => sum + (item.total_open_count || 0),
+      (sum, item) => sum + (Number(item.total_open_count) || 0),
       0
     ) || 0;
   const getTotalTokenUsage = () =>
     trackingData?.token_usage_by_token_name?.reduce(
-      (sum, item) => sum + (item.total_usage || 0),
+      (sum, item) => sum + (Number(item.total_usage) || 0),
       0
     ) || 0;
 
