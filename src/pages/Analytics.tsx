@@ -43,14 +43,38 @@ const Analytics: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
       const data = await getTrackingData();
       if (data) {
-        setTrackingData(data);
+        // Process data to ensure numbers are properly converted
+        const processedData = {
+          ...data,
+          button_clicks_by_button_name:
+            data.button_clicks_by_button_name?.map((item) => ({
+              ...item,
+              total_clicks: Number(item.total_clicks) || 0,
+            })) || [],
+          tool_calls_by_tool_name:
+            data.tool_calls_by_tool_name?.map((item) => ({
+              ...item,
+              total_calls: Number(item.total_calls) || 0,
+            })) || [],
+          page_open_count_by_page_name:
+            data.page_open_count_by_page_name?.map((item) => ({
+              ...item,
+              total_open_count: Number(item.total_open_count) || 0,
+            })) || [],
+          token_usage_by_token_name:
+            data.token_usage_by_token_name?.map((item) => ({
+              ...item,
+              total_usage: Number(item.total_usage) || 0,
+            })) || [],
+        };
+        setTrackingData(processedData);
       }
     } catch (error) {
-      console.error("Error fetching tracking data:", error);
-      toast.error("Failed to fetch tracking data");
+      console.error("Failed to fetch analytics data:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -81,22 +105,22 @@ const Analytics: React.FC = () => {
   // Calculate total metrics
   const getTotalClicks = () =>
     trackingData?.button_clicks_by_button_name?.reduce(
-      (sum, item) => sum + (item.total_clicks || 0),
+      (sum, item) => sum + (Number(item.total_clicks) || 0),
       0
     ) || 0;
   const getTotalToolCalls = () =>
     trackingData?.tool_calls_by_tool_name?.reduce(
-      (sum, item) => sum + (item.total_calls || 0),
+      (sum, item) => sum + (Number(item.total_calls) || 0),
       0
     ) || 0;
   const getTotalPageViews = () =>
     trackingData?.page_open_count_by_page_name?.reduce(
-      (sum, item) => sum + (item.total_open_count || 0),
+      (sum, item) => sum + (Number(item.total_open_count) || 0),
       0
     ) || 0;
   const getTotalTokenUsage = () =>
     trackingData?.token_usage_by_token_name?.reduce(
-      (sum, item) => sum + (item.total_usage || 0),
+      (sum, item) => sum + (Number(item.total_usage) || 0),
       0
     ) || 0;
 
@@ -348,38 +372,47 @@ const Analytics: React.FC = () => {
               </h3>
             </div>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={trackingData?.button_clicks_by_button_name || []}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ button_name, total_clicks }) =>
-                      `${button_name}: ${total_clicks}`
-                    }
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="total_clicks"
-                  >
-                    {trackingData?.button_clicks_by_button_name?.map(
-                      (entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      )
-                    )}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      borderColor: "rgba(255, 255, 255, 0.1)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {trackingData?.button_clicks_by_button_name?.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={trackingData.button_clicks_by_button_name}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ button_name, total_clicks }) =>
+                        `${button_name}: ${total_clicks}`
+                      }
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="total_clicks"
+                    >
+                      {trackingData.button_clicks_by_button_name.map(
+                        (entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        )
+                      )}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        borderColor: "rgba(255, 255, 255, 0.1)",
+                        borderRadius: "8px",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <PieChartIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No button click data available</p>
+                  </div>
+                </div>
+              )}
             </div>
           </GlassCard>
 
@@ -390,37 +423,46 @@ const Analytics: React.FC = () => {
               <h3 className="text-lg font-medium">Tool Usage Distribution</h3>
             </div>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={trackingData?.tool_calls_by_tool_name || []}
-                  layout="horizontal"
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="rgba(255,255,255,0.1)"
-                  />
-                  <XAxis type="number" stroke="#666" fontSize={12} />
-                  <YAxis
-                    type="category"
-                    dataKey="tool_name"
-                    stroke="#666"
-                    fontSize={12}
-                    width={100}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      borderColor: "rgba(255, 255, 255, 0.1)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar
-                    dataKey="total_calls"
-                    fill="#06B6D4"
-                    radius={[0, 4, 4, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {trackingData?.tool_calls_by_tool_name?.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={trackingData.tool_calls_by_tool_name}
+                    layout="horizontal"
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(255,255,255,0.1)"
+                    />
+                    <XAxis type="number" stroke="#666" fontSize={12} />
+                    <YAxis
+                      type="category"
+                      dataKey="tool_name"
+                      stroke="#666"
+                      fontSize={12}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        borderColor: "rgba(255, 255, 255, 0.1)",
+                        borderRadius: "8px",
+                      }}
+                    />
+                    <Bar
+                      dataKey="total_calls"
+                      fill="#06B6D4"
+                      radius={[0, 4, 4, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No tool usage data available</p>
+                  </div>
+                </div>
+              )}
             </div>
           </GlassCard>
         </div>
@@ -434,37 +476,44 @@ const Analytics: React.FC = () => {
               <h3 className="text-lg font-medium">Page Views Distribution</h3>
             </div>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={trackingData?.page_open_count_by_page_name || []}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="rgba(255,255,255,0.1)"
-                  />
-                  <XAxis
-                    dataKey="page_name"
-                    stroke="#666"
-                    fontSize={12}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis stroke="#666" fontSize={12} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      borderColor: "rgba(255, 255, 255, 0.1)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar
-                    dataKey="total_open_count"
-                    fill="#8B5CF6"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {trackingData?.page_open_count_by_page_name?.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={trackingData.page_open_count_by_page_name}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(255,255,255,0.1)"
+                    />
+                    <XAxis
+                      dataKey="page_name"
+                      stroke="#666"
+                      fontSize={12}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis stroke="#666" fontSize={12} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        borderColor: "rgba(255, 255, 255, 0.1)",
+                        borderRadius: "8px",
+                      }}
+                    />
+                    <Bar
+                      dataKey="total_open_count"
+                      fill="#8B5CF6"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <Eye className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No page view data available</p>
+                  </div>
+                </div>
+              )}
             </div>
           </GlassCard>
 
@@ -475,39 +524,48 @@ const Analytics: React.FC = () => {
               <h3 className="text-lg font-medium">Token Usage Distribution</h3>
             </div>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={trackingData?.token_usage_by_token_name || []}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ token_name, total_usage }) =>
-                      `${token_name}: ${total_usage}`
-                    }
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="total_usage"
-                  >
-                    {trackingData?.token_usage_by_token_name?.map(
-                      (entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      )
-                    )}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      borderColor: "rgba(255, 255, 255, 0.1)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              {trackingData?.token_usage_by_token_name?.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={trackingData.token_usage_by_token_name}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ token_name, total_usage }) =>
+                        `${token_name}: ${total_usage}`
+                      }
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="total_usage"
+                    >
+                      {trackingData.token_usage_by_token_name.map(
+                        (entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        )
+                      )}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        borderColor: "rgba(255, 255, 255, 0.1)",
+                        borderRadius: "8px",
+                      }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No token usage data available</p>
+                  </div>
+                </div>
+              )}
             </div>
           </GlassCard>
         </div>
