@@ -1,206 +1,376 @@
+import React, { useState, useEffect } from "react";
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  Users,
+  GitBranch,
+  AlertCircle,
+  TrendingUp,
+  MousePointer,
+  Zap,
+  Eye,
+  Activity,
+  Plus,
+  BarChart3,
+  Calendar,
+} from "lucide-react";
+import GlassCard from "@/components/ui-custom/GlassCard";
+import StatsCard from "@/components/ui-custom/StatsCard";
+import AnimatedText from "@/components/ui-custom/AnimatedText";
+import AddToWaitlistForm from "@/components/ui-custom/AddToWaitlistForm";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import DashboardLayout from "@/layouts/DashboardLayout";
+import { useAuth } from "@/components/AuthContext";
+import {
+  getWaitlistUsers,
+  getTrackingData,
+  WaitlistUser,
+  TrackingData,
+} from "@/services/api";
+import { useNavigate } from "react-router-dom";
 
-import React, { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getWaitlistUsers } from '@/services/api';
-import { useAuth } from '@/hooks/useAuth';
-import GlassCard from '@/components/ui-custom/GlassCard';
-import StatsCard from '@/components/ui-custom/StatsCard';
-import { Button } from '@/components/ui/button';
-import { 
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, 
-  ResponsiveContainer, XAxis, YAxis, Tooltip, Legend 
-} from 'recharts';
-import { AlertCircle, GitBranch, Users } from 'lucide-react';
-import AnimatedText from '@/components/ui-custom/AnimatedText';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import AddToWaitlistForm from '@/components/ui-custom/AddToWaitlistForm';
-import DashboardLayout from '@/layouts/DashboardLayout';
-
-const Dashboard = () => {
+const Dashboard: React.FC = () => {
+  const [waitlistUsers, setWaitlistUsers] = useState<WaitlistUser[]>([]);
+  const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  const [showWelcome, setShowWelcome] = useState(true);
+  const navigate = useNavigate();
 
-  const { data: waitlistUsers = [], isLoading, refetch } = useQuery({
-    queryKey: ['waitlist'],
-    queryFn: getWaitlistUsers,
-  });
-
-  // Hide welcome message after 5 seconds
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setShowWelcome(false);
-    }, 5000);
+    const fetchData = async () => {
+      try {
+        const [waitlistData, analyticsData] = await Promise.all([
+          getWaitlistUsers(),
+          getTrackingData(),
+        ]);
 
-    return () => clearTimeout(timeout);
+        setWaitlistUsers(waitlistData);
+        setTrackingData(analyticsData);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  // Generate country data for charts
-  const countryData = waitlistUsers.reduce((acc: Record<string, number>, user) => {
-    acc[user.country] = (acc[user.country] || 0) + 1;
-    return acc;
-  }, {});
+  // Calculate analytics metrics
+  const getTotalClicks = () =>
+    trackingData?.button_clicks_by_button_name?.reduce(
+      (sum, item) => sum + (item.total_clicks || 0),
+      0
+    ) || 0;
+  const getTotalToolCalls = () =>
+    trackingData?.tool_calls_by_tool_name?.reduce(
+      (sum, item) => sum + (item.total_calls || 0),
+      0
+    ) || 0;
+  const getTotalPageViews = () =>
+    trackingData?.page_open_count_by_page_name?.reduce(
+      (sum, item) => sum + (item.total_open_count || 0),
+      0
+    ) || 0;
+  const getTotalTokenUsage = () =>
+    trackingData?.token_usage_by_token_name?.reduce(
+      (sum, item) => sum + (item.total_usage || 0),
+      0
+    ) || 0;
 
-  const pieChartData = Object.entries(countryData).map(([name, value]) => ({ name, value }));
-  
-  // Hardcoded sample data for growth chart
-  const growthData = [
-    { day: 'Mon', users: 5 },
-    { day: 'Tue', users: 8 },
-    { day: 'Wed', users: 12 },
-    { day: 'Thu', users: 15 },
-    { day: 'Fri', users: 20 },
-    { day: 'Sat', users: 25 },
-    { day: 'Sun', users: waitlistUsers.length || 30 },
-  ];
+  // Prepare chart data
+  const growthData = waitlistUsers.map((user, index) => ({
+    name: `Day ${index + 1}`,
+    users: index + 1,
+  }));
 
-  // Colors for the charts
-  const COLORS = ['#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#0088FE'];
+  const countryData = waitlistUsers.reduce(
+    (acc: Record<string, number>, user) => {
+      const country = user.country || "Unknown";
+      acc[country] = (acc[country] || 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
+  const pieChartData = Object.entries(countryData).map(([name, value]) => ({
+    name,
+    value,
+  }));
+
+  // Recent activity data (last 7 days of button clicks)
+  const recentClicksData = trackingData?.button_clicks_by_date?.slice(-7) || [];
+
+  const COLORS = ["#00FFA1", "#8B5CF6", "#06B6D4", "#F59E0B", "#EF4444"];
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-solana"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
-      <div className="container py-6 animate-fade">
-        {showWelcome && (
-          <div className="fixed inset-x-0 top-20 flex justify-center z-50 animate-fade-up animate-duration-500">
-            <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-lg border border-white/10 rounded-lg px-4 py-3 flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2 text-green-400" />
-              <span>
-                <span className="font-semibold">Welcome back, {user?.username || 'Admin'}!</span> 
-                {' '}The dashboard has been updated with the latest data.
-              </span>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                className="ml-2 h-6 w-6 p-0" 
-                onClick={() => setShowWelcome(false)}
-              >
-                ×
-              </Button>
-            </div>
-          </div>
-        )}
+      <div className="space-y-6">
+        {/* Welcome Alert */}
+        <Alert className="border-green-500/20 bg-green-500/10">
+          <AlertCircle className="h-5 w-5 mr-2 text-green-400" />
+          <AlertDescription className="text-green-100">
+            <span className="font-semibold">
+              Welcome back, {user?.name || "Admin"}!
+            </span>{" "}
+            The dashboard has been updated with the latest data.
+          </AlertDescription>
+        </Alert>
 
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <AnimatedText
-                text="Dashboard Overview"
-                className="text-2xl sm:text-3xl font-bold mb-2"
-              />
-              <p className="text-gray-400">Get insights into your waitlist performance</p>
-            </div>
+        {/* Header Section */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">
+              <AnimatedText gradient>Admin Dashboard</AnimatedText>
+            </h1>
+            <p className="text-gray-400">
+              Overview of your application performance and waitlist metrics
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => navigate("/analytics")}
+              variant="outline"
+              className="border-solana/20 hover:bg-solana/10"
+            >
+              <BarChart3 className="w-4 h-4 mr-2" />
+              View Analytics
+            </Button>
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="bg-green-500/80 hover:bg-green-500 text-black font-semibold">
-                  Add New User
+                <Button className="bg-gradient-to-r from-solana to-purple-600 hover:opacity-90">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add User
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
-                <DialogHeader>
-                  <DialogTitle>Add User to Waitlist</DialogTitle>
-                </DialogHeader>
-                <AddToWaitlistForm onSuccess={() => refetch()} />
+              <DialogContent className="bg-black/90 border-white/10">
+                <AddToWaitlistForm />
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <GlassCard className="text-center bg-gradient-to-br from-green-500/20 to-transparent" style={{ animationDelay: '100ms' }}>
+        {/* Key Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Waitlist Users */}
+          <GlassCard className="text-center bg-gradient-to-br from-green-500/20 to-transparent">
             <Users className="w-10 h-10 mx-auto mb-2 text-green-400" />
-            <h3 className="text-3xl font-bold">{waitlistUsers.length}</h3>
-            <p className="text-gray-400">Total Users</p>
-          </GlassCard>
-          
-          <GlassCard className="text-center bg-gradient-to-br from-blue-500/20 to-transparent" style={{ animationDelay: '200ms' }}>
-            <GitBranch className="w-10 h-10 mx-auto mb-2 text-blue-400" />
-            <h3 className="text-3xl font-bold">
-              {Object.keys(countryData).length}
+            <h3 className="text-3xl font-bold text-green-400">
+              {waitlistUsers.length}
             </h3>
-            <p className="text-gray-400">Countries</p>
+            <p className="text-gray-400">Waitlist Users</p>
           </GlassCard>
-          
-          <StatsCard
-            title="Engagement Rate"
-            value={78}
-            trend={{ value: 12, isPositive: true }}
-            description="vs. last month"
-          />
+
+          {/* Button Clicks */}
+          <GlassCard className="text-center bg-gradient-to-br from-blue-500/20 to-transparent">
+            <MousePointer className="w-10 h-10 mx-auto mb-2 text-blue-400" />
+            <h3 className="text-3xl font-bold text-blue-400">
+              {getTotalClicks().toLocaleString()}
+            </h3>
+            <p className="text-gray-400">Button Clicks</p>
+          </GlassCard>
+
+          {/* Tool Calls */}
+          <GlassCard className="text-center bg-gradient-to-br from-purple-500/20 to-transparent">
+            <Zap className="w-10 h-10 mx-auto mb-2 text-purple-400" />
+            <h3 className="text-3xl font-bold text-purple-400">
+              {getTotalToolCalls().toLocaleString()}
+            </h3>
+            <p className="text-gray-400">Tool Calls</p>
+          </GlassCard>
+
+          {/* Page Views */}
+          <GlassCard className="text-center bg-gradient-to-br from-orange-500/20 to-transparent">
+            <Eye className="w-10 h-10 mx-auto mb-2 text-orange-400" />
+            <h3 className="text-3xl font-bold text-orange-400">
+              {getTotalPageViews().toLocaleString()}
+            </h3>
+            <p className="text-gray-400">Page Views</p>
+          </GlassCard>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <GlassCard className="lg:col-span-2 overflow-hidden bg-black/20" style={{ animationDelay: '400ms' }}>
-            <h3 className="text-lg font-medium mb-4">Waitlist Growth</h3>
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Waitlist Growth */}
+          <GlassCard className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">Waitlist Growth</h3>
+              <TrendingUp className="w-5 h-5 text-green-400" />
+            </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={growthData}>
-                  <XAxis dataKey="day" stroke="#888" />
-                  <YAxis stroke="#888" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(0, 0, 0, 0.8)', 
-                      borderColor: 'rgba(255, 255, 255, 0.1)' 
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(255,255,255,0.1)"
+                  />
+                  <XAxis dataKey="name" stroke="#666" fontSize={12} />
+                  <YAxis stroke="#666" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(0, 0, 0, 0.8)",
+                      borderColor: "rgba(255, 255, 255, 0.1)",
+                      borderRadius: "8px",
                     }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="users" 
-                    stroke="#4ade80" 
-                    strokeWidth={2}
-                    dot={{ fill: '#4ade80', r: 4 }}
-                    activeDot={{ r: 6, fill: '#4ade80' }}
+                  <Line
+                    type="monotone"
+                    dataKey="users"
+                    stroke="#00FFA1"
+                    strokeWidth={3}
+                    dot={{ fill: "#00FFA1", r: 4 }}
+                    activeDot={{ r: 6, fill: "#00FFA1" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </GlassCard>
 
-          <GlassCard className="overflow-hidden bg-black/20" style={{ animationDelay: '500ms' }}>
-            <h3 className="text-lg font-medium mb-4">Users by Country</h3>
+          {/* Recent Activity (Button Clicks) */}
+          <GlassCard className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">Recent Activity (7 Days)</h3>
+              <Activity className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={recentClicksData}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(255,255,255,0.1)"
+                  />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#666"
+                    fontSize={12}
+                    tickFormatter={(date) =>
+                      new Date(date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    }
+                  />
+                  <YAxis stroke="#666" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(0, 0, 0, 0.8)",
+                      borderColor: "rgba(255, 255, 255, 0.1)",
+                      borderRadius: "8px",
+                    }}
+                    labelFormatter={(date) =>
+                      new Date(date).toLocaleDateString()
+                    }
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="total_clicks"
+                    stroke="#06B6D4"
+                    strokeWidth={2}
+                    dot={{ fill: "#06B6D4", r: 3 }}
+                    activeDot={{ r: 5, fill: "#06B6D4" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </GlassCard>
+        </div>
+
+        {/* Geographic Distribution */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <GlassCard className="lg:col-span-2 p-6">
+            <h3 className="text-lg font-medium mb-4">
+              Geographic Distribution
+            </h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie  
+                  <Pie
                     data={pieChartData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
                     {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(0, 0, 0, 0.8)', 
-                      borderColor: 'rgba(255, 255, 255, 0.1)' 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(0, 0, 0, 0.8)",
+                      borderColor: "rgba(255, 255, 255, 0.1)",
+                      borderRadius: "8px",
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </GlassCard>
+
+          {/* Quick Stats */}
+          <GlassCard className="p-6">
+            <h3 className="text-lg font-medium mb-4">Quick Stats</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Token Usage</span>
+                <span className="text-orange-400 font-semibold">
+                  {getTotalTokenUsage().toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Countries</span>
+                <span className="text-green-400 font-semibold">
+                  {Object.keys(countryData).length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Avg. per User</span>
+                <span className="text-purple-400 font-semibold">
+                  {waitlistUsers.length > 0
+                    ? (getTotalClicks() / waitlistUsers.length).toFixed(1)
+                    : 0}{" "}
+                  clicks
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Growth Rate</span>
+                <span className="text-blue-400 font-semibold">
+                  +{waitlistUsers.length}%
+                </span>
+              </div>
+            </div>
+          </GlassCard>
         </div>
-
-        <style>{`
-          @keyframes fadeUp {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          [data-animate="true"] {
-            animation: fadeUp 0.5s ease-out forwards;
-          }
-        `}</style>
       </div>
     </DashboardLayout>
   );
