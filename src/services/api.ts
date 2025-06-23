@@ -75,11 +75,59 @@ const handleError = (error: Error | { response?: { data?: { message?: string } }
   return null;
 };
 
+// Enhanced fetch function with automatic token handling
+const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  // If we get a 401 (Unauthorized), clear the auth data
+  if (response.status === 401) {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_profile');
+    localStorage.removeItem('auth_token_expires');
+    localStorage.removeItem('temp_admin_email');
+    
+    // Dispatch a custom event to notify components about logout
+    window.dispatchEvent(new CustomEvent('auth-logout'));
+    
+    throw new Error('Session expired. Please log in again.');
+  }
+
+  return response;
+};
+
+// Validate token by checking with server
+export const validateToken = async (): Promise<boolean> => {
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return false;
+
+    const response = await authenticatedFetch(`${API_BASE_URL}/validate-token`, {
+      method: 'POST',
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Token validation failed:', error);
+    return false;
+  }
+};
+
 // Get waitlist users
 export const getWaitlistUsers = async (): Promise<WaitlistUser[]> => {
   try {
     console.log("Fetching waitlist users from", `${API_BASE_URL}/get_waitlist`);
-    const response = await fetch(`${API_BASE_URL}/get_waitlist`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/get_waitlist`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch waitlist: ${response.statusText}`);
@@ -98,7 +146,7 @@ export const getWaitlistUsers = async (): Promise<WaitlistUser[]> => {
 export const getTrackingData = async (): Promise<TrackingData | null> => {
   try {
     console.log("Fetching tracking data from", `${API_BASE_URL}/track/get-tracking-data`);
-    const response = await fetch(`${API_BASE_URL}/track/get-tracking-data`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/track/get-tracking-data`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch tracking data: ${response.statusText}`);
@@ -117,11 +165,8 @@ export const getTrackingData = async (): Promise<TrackingData | null> => {
 export const addToWaitlist = async (userData: Omit<WaitlistUser, 'id'>): Promise<boolean> => {
   try {
     console.log("Adding user to waitlist:", userData);
-    const response = await fetch(`${API_BASE_URL}/add_to_waitlist`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/add_to_waitlist`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(userData),
     });
     
@@ -194,8 +239,8 @@ export const verifyAdmin = async (verificationCode: string): Promise<boolean> =>
     
     const data: VerifyResponse = await response.json();
     
-    // Store auth token and user profile
-    localStorage.setItem('auth_token', data.token);
+    // Store auth token with expiration and user profile
+    setAuthToken(data.token, 24); // 24 hours expiration
     localStorage.setItem('user_profile', JSON.stringify(data.admin));
     
     // Clean up temporary email
@@ -243,15 +288,48 @@ export const getUserProfile = (): UserProfile | null => {
   }
 };
 
-// Check if user is authenticated
-export const isAuthenticated = (): boolean => {
-  return !!localStorage.getItem('auth_token');
+// Store auth token with expiration tracking
+const setAuthToken = (token: string, expirationHours: number = 24) => {
+  const now = new Date();
+  const expiration = new Date(now.getTime() + (expirationHours * 60 * 60 * 1000));
+  
+  localStorage.setItem('auth_token', token);
+  localStorage.setItem('auth_token_expires', expiration.toISOString());
 };
 
-// Logout user
+// Check if token is expired
+const isTokenExpired = (): boolean => {
+  const expiration = localStorage.getItem('auth_token_expires');
+  if (!expiration) return true;
+  
+  return new Date() > new Date(expiration);
+};
+
+// Enhanced authentication check
+export const isAuthenticated = (): boolean => {
+  const token = localStorage.getItem('auth_token');
+  const profile = localStorage.getItem('user_profile');
+  
+  if (!token || !profile) return false;
+  
+  // Check if token is expired
+  if (isTokenExpired()) {
+    // Clear expired auth data
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_profile');
+    localStorage.removeItem('auth_token_expires');
+    localStorage.removeItem('temp_admin_email');
+    return false;
+  }
+  
+  return true;
+};
+
+// Enhanced logout function
 export const logoutUser = (): void => {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('user_profile');
+  localStorage.removeItem('auth_token_expires');
   localStorage.removeItem('temp_admin_email');
   toast.success('Logged out successfully');
 };
@@ -259,13 +337,8 @@ export const logoutUser = (): void => {
 // Create admin (if needed)
 export const createAdmin = async (name: string, email: string): Promise<boolean> => {
   try {
-    const token = localStorage.getItem('auth_token');
-    const response = await fetch(`${API_BASE_URL}/create-admin`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/create-admin`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
       body: JSON.stringify({ name, email }),
     });
     
@@ -285,13 +358,8 @@ export const createAdmin = async (name: string, email: string): Promise<boolean>
 // Fetch all admins
 export const fetchAdmins = async (): Promise<UserProfile[]> => {
   try {
-    const token = localStorage.getItem('auth_token');
-    const response = await fetch(`${API_BASE_URL}/fetch-admins`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/fetch-admins`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
     });
     
     if (!response.ok) {
@@ -355,7 +423,7 @@ export interface UserDistributionData {
 export const getUserDistributionAnalytics = async (): Promise<UserDistributionData | null> => {
   try {
     console.log("Fetching user distribution analytics from", `${API_BASE_URL}/user-analytics`);
-    const response = await fetch(`${API_BASE_URL}/user-analytics`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/user-analytics`);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch user distribution analytics: ${response.statusText}`);

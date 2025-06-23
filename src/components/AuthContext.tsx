@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState } from "react";
+import React, { createContext, useEffect, useState, useCallback } from "react";
 import {
   getUserProfile,
   isAuthenticated,
@@ -14,6 +14,7 @@ interface AuthContextType {
   user: UserProfile | null;
   isLoggedIn: boolean;
   needsVerification: boolean;
+  isLoading: boolean;
   login: (
     email: string,
     password: string
@@ -21,16 +22,19 @@ interface AuthContextType {
   verify: (verificationCode: string) => Promise<boolean>;
   logout: () => void;
   updateProfile: (profile: Partial<UserProfile>) => Promise<UserProfile | null>;
+  refreshAuth: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoggedIn: false,
   needsVerification: false,
+  isLoading: true,
   login: async () => ({ success: false, needsVerification: false }),
   verify: async () => false,
   logout: () => {},
   updateProfile: async () => null,
+  refreshAuth: () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -39,53 +43,90 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [needsVerification, setNeedsVerification] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check if user is authenticated on mount
-    const checkAuth = () => {
-      const authenticated = isAuthenticated();
-      setIsLoggedIn(authenticated);
+  // Function to refresh authentication state
+  const refreshAuth = useCallback(() => {
+    const authenticated = isAuthenticated();
+    const profile = getUserProfile();
+    const tempEmail = localStorage.getItem("temp_admin_email");
 
-      if (authenticated) {
-        const profile = getUserProfile();
-        setUser(profile);
-      }
-
-      // Check if there's a pending verification
-      const tempEmail = localStorage.getItem("temp_admin_email");
-      setNeedsVerification(!!tempEmail && !authenticated);
-    };
-
-    checkAuth();
+    setIsLoggedIn(authenticated);
+    setUser(profile);
+    setNeedsVerification(!!tempEmail && !authenticated);
+    setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const result = await loginUser(email, password);
-
-    if (result.needsVerification) {
-      setNeedsVerification(true);
-      if (result.admin) {
-        setUser(result.admin);
+  // Listen for storage changes (for cross-tab synchronization) and auth logout events
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (
+        e.key === "auth_token" ||
+        e.key === "user_profile" ||
+        e.key === "temp_admin_email"
+      ) {
+        refreshAuth();
       }
-      return { success: true, needsVerification: true };
-    }
+    };
 
-    return { success: false, needsVerification: false };
+    const handleAuthLogout = () => {
+      // Handle automatic logout from expired tokens
+      setIsLoggedIn(false);
+      setNeedsVerification(false);
+      setUser(null);
+      setIsLoading(false);
+      navigate("/");
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("auth-logout", handleAuthLogout);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("auth-logout", handleAuthLogout);
+    };
+  }, [refreshAuth, navigate]);
+
+  // Check authentication state on mount
+  useEffect(() => {
+    refreshAuth();
+  }, [refreshAuth]);
+
+  const login = async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      const result = await loginUser(email, password);
+
+      if (result.needsVerification) {
+        setNeedsVerification(true);
+        if (result.admin) {
+          setUser(result.admin);
+        }
+        return { success: true, needsVerification: true };
+      }
+
+      return { success: false, needsVerification: false };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const verify = async (verificationCode: string) => {
-    const success = await verifyAdmin(verificationCode);
+    try {
+      setIsLoading(true);
+      const success = await verifyAdmin(verificationCode);
 
-    if (success) {
-      setIsLoggedIn(true);
-      setNeedsVerification(false);
-      const profile = getUserProfile();
-      setUser(profile);
-      navigate("/dashboard");
+      if (success) {
+        // Refresh auth state after successful verification
+        refreshAuth();
+        navigate("/dashboard");
+      }
+
+      return success;
+    } finally {
+      setIsLoading(false);
     }
-
-    return success;
   };
 
   const logout = () => {
@@ -112,10 +153,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         user,
         isLoggedIn,
         needsVerification,
+        isLoading,
         login,
         verify,
         logout,
         updateProfile,
+        refreshAuth,
       }}
     >
       {children}
