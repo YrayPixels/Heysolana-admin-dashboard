@@ -65,6 +65,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       path: "/user-distribution",
     },
     {
+      name: "Users",
+      icon: <Users className="h-5 w-5" />,
+      path: "/users",
+    },
+    {
       name: "Waitlist",
       icon: <ClipboardList className="h-5 w-5" />,
       path: "/waitlist",

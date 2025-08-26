@@ -8,6 +8,7 @@ import SignIn from "./pages/SignIn";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
 import UserDistribution from "./pages/UserDistribution";
+import Users from "./pages/Users";
 import WaitlistPage from "./pages/WaitlistPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
@@ -88,6 +89,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <UserDistribution />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/users"
+        element={
+          <ProtectedRoute>
+            <Users />
           </ProtectedRoute>
         }
       />

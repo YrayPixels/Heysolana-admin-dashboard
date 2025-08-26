@@ -1,10 +1,10 @@
 // Environment configuration
 export const config = {
   development: {
-    API_BASE_URL: 'http://192.168.144.235:8000/api',
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
   },
   production: {
-    API_BASE_URL: 'https://api.yraytestings.com.ng/api',
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
   },
 } as const;
 
