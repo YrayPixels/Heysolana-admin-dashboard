@@ -12,21 +12,31 @@ export interface WaitlistUser {
 }
 
 export interface UserProfile {
-  id: number;
-  name: string;
+  id: number | string;
+  name?: string; // For frontend compatibility
+  username?: string; // From NestJS backend
   email: string;
   email_verified_at?: string;
+  emailVerifiedAt?: string; // From NestJS backend
   token?: string;
   created_at?: string;
+  createdAt?: string; // From NestJS backend
   updated_at?: string;
+  updatedAt?: string; // From NestJS backend
+  isActive?: boolean;
+  lastLoginAt?: string;
 }
 
 export interface LoginResponse {
+  success: boolean;
   message: string;
+  needsVerification?: boolean;
   admin: UserProfile;
+  token?: string;
 }
 
 export interface VerifyResponse {
+  success: boolean;
   message: string;
   admin: UserProfile;
   token: string;
@@ -67,7 +77,7 @@ export interface TrackingData {
 // Error handling helper
 const handleError = (error: Error | { response?: { data?: { message?: string } }; message?: string }) => {
   console.error("API Error:", error);
-  const message = 
+  const message =
     ('response' in error && error.response?.data?.message) ||
     ('message' in error && error.message) ||
     'Something went wrong';
@@ -78,7 +88,7 @@ const handleError = (error: Error | { response?: { data?: { message?: string } }
 // Enhanced fetch function with automatic token handling
 const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('auth_token');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -96,10 +106,10 @@ const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
     localStorage.removeItem('user_profile');
     localStorage.removeItem('auth_token_expires');
     localStorage.removeItem('temp_admin_email');
-    
+
     // Dispatch a custom event to notify components about logout
     window.dispatchEvent(new CustomEvent('auth-logout'));
-    
+
     throw new Error('Session expired. Please log in again.');
   }
 
@@ -128,11 +138,11 @@ export const getWaitlistUsers = async (): Promise<WaitlistUser[]> => {
   try {
     console.log("Fetching waitlist users from", `${API_BASE_URL}/get_waitlist`);
     const response = await authenticatedFetch(`${API_BASE_URL}/get_waitlist`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch waitlist: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log("Waitlist data:", data);
     return data || [];
@@ -145,13 +155,13 @@ export const getWaitlistUsers = async (): Promise<WaitlistUser[]> => {
 // Get tracking data
 export const getTrackingData = async (): Promise<TrackingData | null> => {
   try {
-    console.log("Fetching tracking data from", `${API_BASE_URL}/track/get-tracking-data`);
-    const response = await authenticatedFetch(`${API_BASE_URL}/track/get-tracking-data`);
-    
+    console.log("Fetching tracking data from", `${API_BASE_URL}/usage-tracking/get-tracking-data`);
+    const response = await authenticatedFetch(`${API_BASE_URL}/usage-tracking/get-tracking-data`);
+
     if (!response.ok) {
       throw new Error(`Failed to fetch tracking data: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log("Tracking data:", data);
     return data;
@@ -169,11 +179,11 @@ export const addToWaitlist = async (userData: Omit<WaitlistUser, 'id'>): Promise
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to add to waitlist: ${response.statusText}`);
     }
-    
+
     toast.success('User added to waitlist successfully');
     return true;
   } catch (error) {
@@ -186,26 +196,33 @@ export const addToWaitlist = async (userData: Omit<WaitlistUser, 'id'>): Promise
 export const loginUser = async (email: string, password: string): Promise<{ needsVerification: boolean; admin?: UserProfile }> => {
   try {
     console.log("Logging in admin:", email);
-    const response = await fetch(`${API_BASE_URL}/login-admin`, {
+    const response = await fetch(`${API_BASE_URL}/admin/login-admin`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ email, password }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || `Login failed: ${response.statusText}`);
     }
-    
+
     const data: LoginResponse = await response.json();
-    
+
+    // Map username to name for frontend compatibility
+    const adminProfile: UserProfile = {
+      ...data.admin,
+      name: data.admin.username || data.admin.name,
+    };
+
     // Store email temporarily for verification step
+    // Note: Don't store token from loginAdmin - wait for verifyAdmin
     localStorage.setItem('temp_admin_email', email);
-    
-    toast.success('Verification code sent to your email');
-    return { needsVerification: true, admin: data.admin };
+
+    toast.success(data.message || 'Please enter verification code');
+    return { needsVerification: data.needsVerification ?? true, admin: adminProfile };
   } catch (error) {
     handleError(error);
     return { needsVerification: false };
@@ -219,33 +236,39 @@ export const verifyAdmin = async (verificationCode: string): Promise<boolean> =>
     if (!email) {
       throw new Error('No email found for verification');
     }
-    
+
     console.log("Verifying admin:", email);
-    const response = await fetch(`${API_BASE_URL}/verify-admin`, {
+    const response = await fetch(`${API_BASE_URL}/admin/verify-admin`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        email, 
-        verification_code: verificationCode 
+      body: JSON.stringify({
+        email,
+        verification_code: verificationCode
       }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || `Verification failed: ${response.statusText}`);
     }
-    
+
     const data: VerifyResponse = await response.json();
-    
+
+    // Map username to name for frontend compatibility
+    const adminProfile: UserProfile = {
+      ...data.admin,
+      name: data.admin.username || data.admin.name,
+    };
+
     // Store auth token with expiration and user profile
     setAuthToken(data.token, 24); // 24 hours expiration
-    localStorage.setItem('user_profile', JSON.stringify(data.admin));
-    
+    localStorage.setItem('user_profile', JSON.stringify(adminProfile));
+
     // Clean up temporary email
     localStorage.removeItem('temp_admin_email');
-    
+
     toast.success('Login successful');
     return true;
   } catch (error) {
@@ -262,13 +285,13 @@ export const updateUserProfile = async (profile: Partial<UserProfile>): Promise<
     if (!currentProfile) {
       throw new Error('No user profile found');
     }
-    
+
     const parsedProfile = JSON.parse(currentProfile);
     const updatedProfile = { ...parsedProfile, ...profile };
-    
+
     localStorage.setItem('user_profile', JSON.stringify(updatedProfile));
     toast.success('Profile updated successfully');
-    
+
     return updatedProfile;
   } catch (error) {
     handleError(error);
@@ -292,7 +315,7 @@ export const getUserProfile = (): UserProfile | null => {
 const setAuthToken = (token: string, expirationHours: number = 24) => {
   const now = new Date();
   const expiration = new Date(now.getTime() + (expirationHours * 60 * 60 * 1000));
-  
+
   localStorage.setItem('auth_token', token);
   localStorage.setItem('auth_token_expires', expiration.toISOString());
 };
@@ -301,7 +324,7 @@ const setAuthToken = (token: string, expirationHours: number = 24) => {
 const isTokenExpired = (): boolean => {
   const expiration = localStorage.getItem('auth_token_expires');
   if (!expiration) return true;
-  
+
   return new Date() > new Date(expiration);
 };
 
@@ -309,9 +332,9 @@ const isTokenExpired = (): boolean => {
 export const isAuthenticated = (): boolean => {
   const token = localStorage.getItem('auth_token');
   const profile = localStorage.getItem('user_profile');
-  
+
   if (!token || !profile) return false;
-  
+
   // Check if token is expired
   if (isTokenExpired()) {
     // Clear expired auth data
@@ -321,7 +344,7 @@ export const isAuthenticated = (): boolean => {
     localStorage.removeItem('temp_admin_email');
     return false;
   }
-  
+
   return true;
 };
 
@@ -337,16 +360,16 @@ export const logoutUser = (): void => {
 // Create admin (if needed)
 export const createAdmin = async (name: string, email: string): Promise<boolean> => {
   try {
-    const response = await authenticatedFetch(`${API_BASE_URL}/create-admin`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/create-admin`, {
       method: 'POST',
       body: JSON.stringify({ name, email }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || `Failed to create admin: ${response.statusText}`);
     }
-    
+
     toast.success('Admin created successfully');
     return true;
   } catch (error) {
@@ -358,17 +381,23 @@ export const createAdmin = async (name: string, email: string): Promise<boolean>
 // Fetch all admins
 export const fetchAdmins = async (): Promise<UserProfile[]> => {
   try {
-    const response = await authenticatedFetch(`${API_BASE_URL}/fetch-admins`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/fetch-admins`, {
       method: 'POST',
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || `Failed to fetch admins: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
-    return data.admins || [];
+    // NestJS returns { success: true, data: admins }
+    const admins = data.data || data.admins || [];
+    // Map username to name for frontend compatibility
+    return admins.map((admin: any) => ({
+      ...admin,
+      name: admin.username || admin.name,
+    }));
   } catch (error) {
     handleError(error);
     return [];
@@ -424,11 +453,11 @@ export const getUserDistributionAnalytics = async (): Promise<UserDistributionDa
   try {
     console.log("Fetching user distribution analytics from", `${API_BASE_URL}/user-analytics`);
     const response = await authenticatedFetch(`${API_BASE_URL}/user-analytics`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch user distribution analytics: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log("User distribution analytics data:", data);
     return data;
@@ -474,22 +503,22 @@ export const getUsers = async (filters: UsersFilters = {}): Promise<UsersRespons
     // Just fetch all users from the simple endpoint
     const url = `${import.meta.env.VITE_API_BASE_URL}/fetch-users`;
     console.log("Fetching users from", url);
-    
+
     const response = await authenticatedFetch(url);
     console.log("Response status:", response.status);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Error response body:", errorText);
       throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log("Users data:", data);
-    
+
     // Transform the data to match our expected format
     let users = Array.isArray(data) ? data : [];
-    
+
     // Apply search filter
     if (filters.search) {
       users = users.filter(user =>
@@ -498,7 +527,7 @@ export const getUsers = async (filters: UsersFilters = {}): Promise<UsersRespons
         user.wallet_address?.toLowerCase().includes(filters.search.toLowerCase())
       );
     }
-    
+
     // Apply status filter
     if (filters.status && filters.status !== 'all') {
       if (filters.status === 'verified') {
@@ -507,7 +536,7 @@ export const getUsers = async (filters: UsersFilters = {}): Promise<UsersRespons
         users = users.filter(user => !user.verification_status || user.verification_status !== 'verified');
       }
     }
-    
+
     // Apply wallet status filter
     if (filters.wallet_status && filters.wallet_status !== 'all') {
       if (filters.wallet_status === 'has_wallet') {
@@ -516,13 +545,13 @@ export const getUsers = async (filters: UsersFilters = {}): Promise<UsersRespons
         users = users.filter(user => !user.wallet_address || user.wallet_address === '');
       }
     }
-    
+
     // Apply sorting
     if (filters.sort_field) {
       users.sort((a, b) => {
         const aValue = a[filters.sort_field as keyof typeof a];
         const bValue = b[filters.sort_field as keyof typeof b];
-        
+
         if (filters.sort_direction === 'asc') {
           return aValue > bValue ? 1 : -1;
         } else {
@@ -530,17 +559,17 @@ export const getUsers = async (filters: UsersFilters = {}): Promise<UsersRespons
         }
       });
     }
-    
+
     const total = users.length;
     const current_page = filters.page || 1;
     const per_page = filters.per_page || 10;
     const last_page = Math.ceil(total / per_page);
-    
+
     // Apply pagination
     const startIndex = (current_page - 1) * per_page;
     const endIndex = startIndex + per_page;
     const paginatedUsers = users.slice(startIndex, endIndex);
-    
+
     return {
       users: paginatedUsers,
       total,
@@ -560,11 +589,11 @@ export const getUser = async (id: number): Promise<User | null> => {
   try {
     console.log("Fetching user from", `${API_BASE_URL}/fetch-user/${id}`);
     const response = await authenticatedFetch(`${API_BASE_URL}/fetch-user/${id}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch user: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log("User data:", data);
     return data;
@@ -582,11 +611,11 @@ export const createUser = async (userData: Omit<User, 'id' | 'created_at' | 'upd
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to create user: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log("Created user data:", data);
     toast.success('User created successfully');
@@ -605,11 +634,11 @@ export const updateUserVerificationStatus = async (id: number, status: string): 
       method: 'POST',
       body: JSON.stringify({ id, verification_status: status }),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to update user verification status: ${response.statusText}`);
     }
-    
+
     toast.success('User verification status updated successfully');
     return true;
   } catch (error) {
