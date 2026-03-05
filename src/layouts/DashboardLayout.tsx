@@ -8,6 +8,7 @@ import {
   ClipboardList,
   LogOut,
   Menu,
+  Package,
   User,
   Users,
   Volume2,
@@ -73,6 +74,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Waitlist",
       icon: <ClipboardList className="h-5 w-5" />,
       path: "/waitlist",
+    },
+    {
+      name: "Orders",
+      icon: <Package className="h-5 w-5" />,
+      path: "/orders",
     },
     {
       name: "Profile",

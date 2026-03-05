@@ -617,3 +617,161 @@ export const updateUserVerificationStatus = async (id: number, status: string): 
     return false;
   }
 };
+
+// ============ Jumia Orders (Admin) ============
+
+export interface JumiaOrderUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface JumiaDeliveryAddress {
+  id: number;
+  full_name: string;
+  phone_number: string;
+  email?: string;
+  address_line_1: string;
+  address_line_2?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  full_address?: string;
+}
+
+export interface JumiaOrderItem {
+  id: number;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  category?: string;
+  brand?: string;
+}
+
+export interface JumiaOrderHistoryEntry {
+  id: number;
+  status: string;
+  status_description?: string;
+  timestamp: string;
+  notes?: string;
+}
+
+export interface JumiaOrder {
+  id: number;
+  order_number: string;
+  jumia_order_id?: string;
+  status: string;
+  total_amount: number;
+  currency: string;
+  payment_method?: string;
+  payment_status: string;
+  order_date: string;
+  estimated_delivery_date?: string;
+  notes?: string;
+  tracking_number?: string;
+  status_label?: string;
+  payment_status_label?: string;
+  formatted_total?: string;
+  created_at: string;
+  updated_at: string;
+  delivery_address?: JumiaDeliveryAddress;
+  order_items?: JumiaOrderItem[];
+  order_history?: JumiaOrderHistoryEntry[];
+  user?: JumiaOrderUser;
+}
+
+export interface JumiaOrdersResponse {
+  success: boolean;
+  data: JumiaOrder[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+export interface JumiaOrderStats {
+  total_orders: number;
+  pending_orders: number;
+  processing_orders: number;
+  shipped_orders: number;
+  delivered_orders: number;
+  cancelled_orders: number;
+  total_revenue: number;
+}
+
+export interface JumiaOrdersFilters {
+  status?: string;
+  payment_status?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}
+
+// Get all Jumia orders (admin)
+export const getJumiaOrders = async (filters: JumiaOrdersFilters = {}): Promise<JumiaOrdersResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.payment_status) params.set('payment_status', filters.payment_status);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.per_page) params.set('per_page', String(filters.per_page));
+    const url = `${API_BASE_URL}/admin/jumia/orders${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch orders: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+// Get single Jumia order (admin)
+export const getJumiaOrder = async (orderId: number): Promise<{ success: boolean; data: JumiaOrder } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/jumia/orders/${orderId}`);
+    if (!response.ok) throw new Error(`Failed to fetch order: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+// Update Jumia order status (admin)
+export const updateJumiaOrderStatus = async (
+  orderId: number,
+  payload: { status: string; status_description?: string; tracking_number?: string; notes?: string }
+): Promise<{ success: boolean; message: string; data: JumiaOrder } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/jumia/orders/${orderId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || `Failed to update order: ${response.statusText}`);
+    toast.success('Order status updated');
+    return data;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+// Get Jumia order stats (admin)
+export const getJumiaOrderStats = async (): Promise<JumiaOrderStats | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/jumia/orders/stats`);
+    if (!response.ok) throw new Error(`Failed to fetch order stats: ${response.statusText}`);
+    const json = await response.json();
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};

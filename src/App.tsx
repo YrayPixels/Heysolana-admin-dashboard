@@ -11,6 +11,7 @@ import UserDistribution from "./pages/UserDistribution";
 import Users from "./pages/Users";
 import WaitlistPage from "./pages/WaitlistPage";
 import ProfilePage from "./pages/ProfilePage";
+import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -107,6 +108,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <WaitlistPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/orders"
+        element={
+          <ProtectedRoute>
+            <Orders />
           </ProtectedRoute>
         }
       />
