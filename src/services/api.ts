@@ -775,3 +775,124 @@ export const getJumiaOrderStats = async (): Promise<JumiaOrderStats | null> => {
     return null;
   }
 };
+
+// ============ Crossmint Orders (Admin) ============
+
+export interface CrossmintOrder {
+  id: number;
+  order_number: string;
+  crossmint_order_id: string | null;
+  wallet_address: string;
+  asin: string;
+  status: string;
+  total_amount: number | null;
+  currency: string;
+  payment_status: string;
+  order_date: string;
+  created_at: string;
+  updated_at: string;
+  source: string;
+}
+
+export interface CrossmintOrdersResponse {
+  success: boolean;
+  data: CrossmintOrder[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+export interface CrossmintOrderStats {
+  total_orders: number;
+  pending_orders: number;
+  delivered_orders: number;
+  cancelled_orders: number;
+}
+
+export interface CrossmintOrdersFilters {
+  status?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}
+
+export const getCrossmintOrders = async (filters: CrossmintOrdersFilters = {}): Promise<CrossmintOrdersResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.per_page) params.set('per_page', String(filters.per_page));
+    const url = `${API_BASE_URL}/admin/crossmint/orders${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch Crossmint orders: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getCrossmintOrder = async (orderId: number): Promise<{ success: boolean; data: CrossmintOrder } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/crossmint/orders/${orderId}`);
+    if (!response.ok) throw new Error(`Failed to fetch Crossmint order: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getCrossmintOrderStats = async (): Promise<CrossmintOrderStats | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/crossmint/orders/stats`);
+    if (!response.ok) throw new Error(`Failed to fetch Crossmint order stats: ${response.statusText}`);
+    const json = await response.json();
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+// ============ Admin Settings (Processing Fee) ============
+
+export interface ProcessingFeeSettings {
+  processing_fee_percent: string;
+  processing_fee_fixed_ngn: string;
+  processing_fee_fixed_usd: string;
+}
+
+export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/settings/processing-fee`);
+    if (!response.ok) throw new Error(`Failed to fetch settings: ${response.statusText}`);
+    const json = await response.json();
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateProcessingFeeSettings = async (
+  payload: Partial<{ processing_fee_percent: number; processing_fee_fixed_ngn: number; processing_fee_fixed_usd: number }>
+): Promise<ProcessingFeeSettings | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/settings/processing-fee`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.message || `Failed to update settings: ${response.statusText}`);
+    toast.success('Processing fee updated');
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};

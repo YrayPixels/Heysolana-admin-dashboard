@@ -1,0 +1,130 @@
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Save, Percent } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import DashboardLayout from '@/layouts/DashboardLayout';
+import {
+  getProcessingFeeSettings,
+  updateProcessingFeeSettings,
+} from '@/services/api';
+
+const Settings = () => {
+  const queryClient = useQueryClient();
+  const [percent, setPercent] = useState('');
+  const [fixedNgn, setFixedNgn] = useState('');
+  const [fixedUsd, setFixedUsd] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['processing-fee-settings'],
+    queryFn: getProcessingFeeSettings,
+  });
+
+  React.useEffect(() => {
+    if (settings) {
+      setPercent(settings.processing_fee_percent ?? '');
+      setFixedNgn(settings.processing_fee_fixed_ngn ?? '');
+      setFixedUsd(settings.processing_fee_fixed_usd ?? '');
+    }
+  }, [settings]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const result = await updateProcessingFeeSettings({
+      processing_fee_percent: percent === '' ? undefined : Number(percent),
+      processing_fee_fixed_ngn: fixedNgn === '' ? undefined : Number(fixedNgn),
+      processing_fee_fixed_usd: fixedUsd === '' ? undefined : Number(fixedUsd),
+    });
+    setSaving(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6 p-4 md:p-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground">
+            Configure processing fees used when deducting from user accounts (e.g. Jumia NGN, Crossmint USD)
+          </p>
+        </div>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Percent className="h-5 w-5" />
+              Processing fee
+            </CardTitle>
+            <CardDescription>
+              These values are applied when deducting from user accounts. Use fixed NGN for Jumia orders, fixed USD for Crossmint/Amazon. Percent applies to the order total.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <div className="grid gap-6 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="fee-percent">Fee percent (%)</Label>
+                  <Input
+                    id="fee-percent"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    placeholder="0"
+                    value={percent}
+                    onChange={(e) => setPercent(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fee-ngn">Fixed fee (NGN) – e.g. Jumia</Label>
+                  <Input
+                    id="fee-ngn"
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder="0"
+                    value={fixedNgn}
+                    onChange={(e) => setFixedNgn(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fee-usd">Fixed fee (USD) – e.g. Crossmint/Amazon</Label>
+                  <Input
+                    id="fee-usd"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    placeholder="0"
+                    value={fixedUsd}
+                    onChange={(e) => setFixedUsd(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+                <Button onClick={handleSave} disabled={saving} className="w-fit">
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default Settings;

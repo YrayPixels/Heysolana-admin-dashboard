@@ -12,6 +12,7 @@ import Users from "./pages/Users";
 import WaitlistPage from "./pages/WaitlistPage";
 import ProfilePage from "./pages/ProfilePage";
 import Orders from "./pages/Orders";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -117,6 +118,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Orders />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
           </ProtectedRoute>
         }
       />
