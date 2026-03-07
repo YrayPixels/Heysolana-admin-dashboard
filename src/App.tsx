@@ -12,6 +12,8 @@ import Users from "./pages/Users";
 import WaitlistPage from "./pages/WaitlistPage";
 import ProfilePage from "./pages/ProfilePage";
 import Orders from "./pages/Orders";
+import JumiaOrderDetail from "./pages/JumiaOrderDetail";
+import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -118,6 +120,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Orders />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/orders/jumia/:orderId"
+        element={
+          <ProtectedRoute>
+            <JumiaOrderDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/orders/crossmint/:orderId"
+        element={
+          <ProtectedRoute>
+            <CrossmintOrderDetail />
           </ProtectedRoute>
         }
       />

@@ -778,11 +778,22 @@ export const getJumiaOrderStats = async (): Promise<JumiaOrderStats | null> => {
 
 // ============ Crossmint Orders (Admin) ============
 
+export interface CrossmintShippingAddress {
+  name?: string;
+  line1?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
 export interface CrossmintOrder {
   id: number;
   order_number: string;
   crossmint_order_id: string | null;
   wallet_address: string;
+  recipient_email: string | null;
+  shipping_address: CrossmintShippingAddress | null;
   asin: string;
   status: string;
   total_amount: number | null;
@@ -859,6 +870,24 @@ export const getCrossmintOrderStats = async (): Promise<CrossmintOrderStats | nu
   }
 };
 
+export const updateCrossmintOrderStatus = async (
+  orderId: number,
+  payload: { status: string; notes?: string }
+): Promise<{ success: boolean; data: CrossmintOrder } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/crossmint/orders/${orderId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(`Failed to update Crossmint order status: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 // ============ Admin Settings (Processing Fee) ============
 
 export interface ProcessingFeeSettings {
@@ -866,6 +895,8 @@ export interface ProcessingFeeSettings {
   processing_fee_fixed_ngn: string;
   processing_fee_fixed_usd: string;
   treasury_wallet_address: string;
+  delivery_fee_jumia_ngn: string;
+  delivery_fee_crossmint_usd: string;
 }
 
 export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings | null> => {
@@ -886,6 +917,8 @@ export const updateProcessingFeeSettings = async (
     processing_fee_fixed_ngn: number;
     processing_fee_fixed_usd: number;
     treasury_wallet_address: string;
+    delivery_fee_jumia_ngn: number;
+    delivery_fee_crossmint_usd: number;
   }>
 ): Promise<ProcessingFeeSettings | null> => {
   try {

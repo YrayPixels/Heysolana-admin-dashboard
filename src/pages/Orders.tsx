@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
@@ -20,26 +21,15 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import {
   getJumiaOrders,
-  getJumiaOrder,
-  updateJumiaOrderStatus,
   getJumiaOrderStats,
   JumiaOrder,
   JumiaOrdersFilters,
   getCrossmintOrders,
-  getCrossmintOrder,
   getCrossmintOrderStats,
   CrossmintOrder,
   CrossmintOrdersFilters,
@@ -90,7 +80,7 @@ function getStatusBadgeVariant(status: string): 'default' | 'secondary' | 'destr
 
 function formatDate(iso: string | undefined) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleString(undefined, {
     dateStyle: 'short',
     timeStyle: 'short',
   });
@@ -108,6 +98,7 @@ const CROSSMINT_STATUS_OPTIONS = [
 ];
 
 const Orders = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
@@ -115,19 +106,12 @@ const Orders = () => {
   const [searchDebounced, setSearchDebounced] = useState('');
   const [page, setPage] = useState(1);
   const [perPage] = useState(15);
-  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [updateStatusOrderId, setUpdateStatusOrderId] = useState<number | null>(null);
-  const [newStatus, setNewStatus] = useState('');
-  const [trackingNumber, setTrackingNumber] = useState('');
-  const [statusNotes, setStatusNotes] = useState('');
-  const [isUpdating, setIsUpdating] = useState(false);
 
   // Crossmint tab state
   const [cmPage, setCmPage] = useState(1);
   const [cmSearch, setCmSearch] = useState('');
   const [cmSearchDebounced, setCmSearchDebounced] = useState('');
   const [cmStatusFilter, setCmStatusFilter] = useState<string>('all');
-  const [selectedCrossmintOrderId, setSelectedCrossmintOrderId] = useState<number | null>(null);
 
   // Debounce search
   React.useEffect(() => {
@@ -158,12 +142,6 @@ const Orders = () => {
     queryFn: getJumiaOrderStats,
   });
 
-  const { data: selectedOrderData } = useQuery({
-    queryKey: ['jumia-order', selectedOrderId],
-    queryFn: () => (selectedOrderId ? getJumiaOrder(selectedOrderId) : null),
-    enabled: !!selectedOrderId,
-  });
-
   const cmFilters: CrossmintOrdersFilters = {
     status: cmStatusFilter !== 'all' ? cmStatusFilter : undefined,
     search: cmSearchDebounced || undefined,
@@ -179,47 +157,11 @@ const Orders = () => {
     queryKey: ['crossmint-order-stats'],
     queryFn: getCrossmintOrderStats,
   });
-  const { data: selectedCrossmintData } = useQuery({
-    queryKey: ['crossmint-order', selectedCrossmintOrderId],
-    queryFn: () => (selectedCrossmintOrderId ? getCrossmintOrder(selectedCrossmintOrderId) : null),
-    enabled: !!selectedCrossmintOrderId,
-  });
 
   const handleRefresh = () => {
     refetch();
     queryClient.invalidateQueries({ queryKey: ['jumia-order-stats'] });
     toast.success('Orders refreshed');
-  };
-
-  const handleOpenDetail = (orderId: number) => {
-    setSelectedOrderId(orderId);
-  };
-
-  const handleOpenUpdateStatus = (order: JumiaOrder) => {
-    setUpdateStatusOrderId(order.id);
-    setNewStatus(order.status);
-    setTrackingNumber(order.tracking_number || '');
-    setStatusNotes('');
-  };
-
-  const handleSubmitStatusUpdate = async () => {
-    if (!updateStatusOrderId || !newStatus) return;
-    setIsUpdating(true);
-    const result = await updateJumiaOrderStatus(updateStatusOrderId, {
-      status: newStatus,
-      tracking_number: trackingNumber || undefined,
-      notes: statusNotes || undefined,
-    });
-    setIsUpdating(false);
-    if (result) {
-      setUpdateStatusOrderId(null);
-      queryClient.invalidateQueries({ queryKey: ['jumia-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['jumia-order', updateStatusOrderId] });
-      queryClient.invalidateQueries({ queryKey: ['jumia-order-stats'] });
-      if (selectedOrderId === updateStatusOrderId) {
-        queryClient.invalidateQueries({ queryKey: ['jumia-order', selectedOrderId] });
-      }
-    }
   };
 
   const orders = ordersResponse?.data ?? [];
@@ -442,14 +384,15 @@ const Orders = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleOpenDetail(order.id)}
+                                onClick={() => navigate(`/orders/jumia/${order.id}`)}
+                                aria-label="View order details"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleOpenUpdateStatus(order)}
+                                onClick={() => navigate(`/orders/jumia/${order.id}`)}
                               >
                                 Update status
                               </Button>
@@ -491,149 +434,6 @@ const Orders = () => {
             )}
           </CardContent>
         </Card>
-
-      {/* Order detail dialog */}
-      <Dialog open={!!selectedOrderId} onOpenChange={(open) => !open && setSelectedOrderId(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-black/95 border-white/10">
-          <DialogHeader>
-            <DialogTitle>Order details</DialogTitle>
-            <DialogDescription>
-              {selectedOrderData?.data?.order_number ?? '—'}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedOrderData?.data ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Status:</span>{' '}
-                  <Badge variant={getStatusBadgeVariant(selectedOrderData.data.status)}>
-                    {selectedOrderData.data.status_label ?? selectedOrderData.data.status}
-                  </Badge>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Payment:</span>{' '}
-                  {selectedOrderData.data.payment_status_label ?? selectedOrderData.data.payment_status}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Total:</span>{' '}
-                  {selectedOrderData.data.formatted_total}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Date:</span>{' '}
-                  {formatDate(selectedOrderData.data.order_date)}
-                </div>
-                {selectedOrderData.data.tracking_number && (
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">Tracking:</span>{' '}
-                    {selectedOrderData.data.tracking_number}
-                  </div>
-                )}
-              </div>
-              {selectedOrderData.data.user && (
-                <div>
-                  <h4 className="font-medium mb-2">Customer</h4>
-                  <p>{selectedOrderData.data.user.name} — {selectedOrderData.data.user.email}</p>
-                </div>
-              )}
-              {selectedOrderData.data.delivery_address && (
-                <div>
-                  <h4 className="font-medium mb-2">Delivery address</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedOrderData.data.delivery_address.full_address ??
-                      [
-                        selectedOrderData.data.delivery_address.address_line_1,
-                        selectedOrderData.data.delivery_address.city,
-                        selectedOrderData.data.delivery_address.state,
-                        selectedOrderData.data.delivery_address.country,
-                      ].join(', ')}
-                  </p>
-                  <p className="text-sm mt-1">
-                    {selectedOrderData.data.delivery_address.full_name} —{' '}
-                    {selectedOrderData.data.delivery_address.phone_number}
-                  </p>
-                </div>
-              )}
-              {selectedOrderData.data.order_items && selectedOrderData.data.order_items.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Items</h4>
-                  <ul className="space-y-1 text-sm">
-                    {selectedOrderData.data.order_items.map((item) => (
-                      <li key={item.id}>
-                        {item.product_name} × {item.quantity} — {item.unit_price} {selectedOrderData.data?.currency} each
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedOrderId(null);
-                  if (selectedOrderData.data) handleOpenUpdateStatus(selectedOrderData.data);
-                }}
-              >
-                Update status
-              </Button>
-            </div>
-          ) : (
-            <div className="flex justify-center py-8">
-              <Skeleton className="h-24 w-full" />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Update status dialog */}
-      <Dialog open={!!updateStatusOrderId} onOpenChange={(open) => !open && setUpdateStatusOrderId(null)}>
-        <DialogContent className="bg-black/95 border-white/10">
-          <DialogHeader>
-            <DialogTitle>Update order status</DialogTitle>
-            <DialogDescription>Change status and optionally add tracking or notes</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={newStatus} onValueChange={setNewStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.filter((o) => o.value !== 'all').map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Tracking number (optional)</Label>
-              <Input
-                value={trackingNumber}
-                onChange={(e) => setTrackingNumber(e.target.value)}
-                placeholder="e.g. TRK123456"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Textarea
-                value={statusNotes}
-                onChange={(e) => setStatusNotes(e.target.value)}
-                placeholder="Internal note for this status change"
-                rows={3}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setUpdateStatusOrderId(null)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmitStatusUpdate} disabled={isUpdating}>
-                {isUpdating ? 'Updating...' : 'Update status'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
           </TabsContent>
 
           <TabsContent value="crossmint" className="space-y-6 mt-6">
@@ -759,7 +559,12 @@ const Orders = () => {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button variant="ghost" size="sm" onClick={() => setSelectedCrossmintOrderId(order.id)}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigate(`/orders/crossmint/${order.id}`)}
+                                  aria-label="View order details"
+                                >
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </TableCell>
@@ -790,31 +595,6 @@ const Orders = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Crossmint order detail dialog */}
-      <Dialog open={!!selectedCrossmintOrderId} onOpenChange={(open) => !open && setSelectedCrossmintOrderId(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-black/95 border-white/10">
-          <DialogHeader>
-            <DialogTitle>Crossmint order details</DialogTitle>
-            <DialogDescription>{selectedCrossmintData?.data?.order_number ?? '—'}</DialogDescription>
-          </DialogHeader>
-          {selectedCrossmintData?.data ? (
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-muted-foreground">Order number:</span> {selectedCrossmintData.data.order_number}</div>
-                <div><span className="text-muted-foreground">Crossmint ID:</span> {selectedCrossmintData.data.crossmint_order_id ?? '—'}</div>
-                <div><span className="text-muted-foreground">Wallet:</span> <span className="font-mono text-xs break-all">{selectedCrossmintData.data.wallet_address}</span></div>
-                <div><span className="text-muted-foreground">ASIN:</span> {selectedCrossmintData.data.asin}</div>
-                <div><span className="text-muted-foreground">Status:</span> <Badge>{selectedCrossmintData.data.status}</Badge></div>
-                <div><span className="text-muted-foreground">Total:</span> {selectedCrossmintData.data.total_amount != null ? `${selectedCrossmintData.data.currency} ${Number(selectedCrossmintData.data.total_amount).toLocaleString()}` : '—'}</div>
-                <div><span className="text-muted-foreground">Date:</span> {formatDate(selectedCrossmintData.data.order_date)}</div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center py-8"><Skeleton className="h-24 w-full" /></div>
-          )}
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 };
