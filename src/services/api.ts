@@ -865,6 +865,7 @@ export interface ProcessingFeeSettings {
   processing_fee_percent: string;
   processing_fee_fixed_ngn: string;
   processing_fee_fixed_usd: string;
+  treasury_wallet_address: string;
 }
 
 export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings | null> => {
@@ -880,7 +881,12 @@ export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings 
 };
 
 export const updateProcessingFeeSettings = async (
-  payload: Partial<{ processing_fee_percent: number; processing_fee_fixed_ngn: number; processing_fee_fixed_usd: number }>
+  payload: Partial<{
+    processing_fee_percent: number;
+    processing_fee_fixed_ngn: number;
+    processing_fee_fixed_usd: number;
+    treasury_wallet_address: string;
+  }>
 ): Promise<ProcessingFeeSettings | null> => {
   try {
     const response = await authenticatedFetch(`${API_BASE_URL}/admin/settings/processing-fee`, {
@@ -889,7 +895,7 @@ export const updateProcessingFeeSettings = async (
     });
     const json = await response.json();
     if (!response.ok) throw new Error(json.message || `Failed to update settings: ${response.statusText}`);
-    toast.success('Processing fee updated');
+    toast.success('Settings updated');
     return json.data ?? null;
   } catch (error) {
     handleError(error);

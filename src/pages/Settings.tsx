@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Percent } from 'lucide-react';
+import { Save, Percent, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,7 @@ const Settings = () => {
   const [percent, setPercent] = useState('');
   const [fixedNgn, setFixedNgn] = useState('');
   const [fixedUsd, setFixedUsd] = useState('');
+  const [treasury, setTreasury] = useState('');
   const [saving, setSaving] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
@@ -29,6 +30,7 @@ const Settings = () => {
       setPercent(settings.processing_fee_percent ?? '');
       setFixedNgn(settings.processing_fee_fixed_ngn ?? '');
       setFixedUsd(settings.processing_fee_fixed_usd ?? '');
+      setTreasury(settings.treasury_wallet_address ?? '');
     }
   }, [settings]);
 
@@ -38,6 +40,7 @@ const Settings = () => {
       processing_fee_percent: percent === '' ? undefined : Number(percent),
       processing_fee_fixed_ngn: fixedNgn === '' ? undefined : Number(fixedNgn),
       processing_fee_fixed_usd: fixedUsd === '' ? undefined : Number(fixedUsd),
+      treasury_wallet_address: treasury.trim() === '' ? undefined : treasury.trim(),
     });
     setSaving(false);
     if (result) {
@@ -51,9 +54,44 @@ const Settings = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">
-            Configure processing fees used when deducting from user accounts (e.g. Jumia NGN, Crossmint USD)
+            Configure processing fees and the single treasury wallet used for all fees and payments (Jumia USDC, Crossmint, etc.)
           </p>
         </div>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              Treasury wallet
+            </CardTitle>
+            <CardDescription>
+              Solana wallet address that receives all fee and payment flows (USDC for Jumia orders, etc.). The wallet app fetches this to send payments.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-10 w-full max-w-md" />
+            ) : (
+              <div className="grid gap-4 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="treasury">Treasury wallet address</Label>
+                  <Input
+                    id="treasury"
+                    type="text"
+                    placeholder="e.g. 13dqNw1su2UTYPVvqP6ahV8oHtghvoe2k2czkrx9uWJZ"
+                    value={treasury}
+                    onChange={(e) => setTreasury(e.target.value)}
+                    className="bg-white/5 border-white/10 font-mono text-sm"
+                  />
+                </div>
+                <Button onClick={handleSave} disabled={saving} className="w-fit">
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? 'Saving...' : 'Save all settings'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="bg-black/30 border-white/10">
           <CardHeader>
@@ -116,7 +154,7 @@ const Settings = () => {
                 </div>
                 <Button onClick={handleSave} disabled={saving} className="w-fit">
                   <Save className="mr-2 h-4 w-4" />
-                  {saving ? 'Saving...' : 'Save'}
+                  {saving ? 'Saving...' : 'Save all settings'}
                 </Button>
               </div>
             )}
