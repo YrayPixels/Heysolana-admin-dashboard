@@ -10,6 +10,7 @@ import {
   Menu,
   Package,
   Settings,
+  ShieldCheck,
   User,
   Users,
   Volume2,
@@ -85,6 +86,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Settings",
       icon: <Settings className="h-5 w-5" />,
       path: "/settings",
+    },
+    {
+      name: "Admin users",
+      icon: <ShieldCheck className="h-5 w-5" />,
+      path: "/admins",
     },
     {
       name: "Profile",

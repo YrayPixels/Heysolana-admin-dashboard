@@ -15,6 +15,7 @@ import Orders from "./pages/Orders";
 import JumiaOrderDetail from "./pages/JumiaOrderDetail";
 import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
+import Admins from "./pages/Admins";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -147,6 +148,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admins"
+        element={
+          <ProtectedRoute>
+            <Admins />
           </ProtectedRoute>
         }
       />
