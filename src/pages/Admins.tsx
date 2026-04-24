@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Users, Mail, Calendar, RefreshCw } from 'lucide-react';
+import { UserPlus, Users, Mail, Calendar, RefreshCw, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +25,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import DashboardLayout from '@/layouts/DashboardLayout';
-import { fetchAdmins, createAdmin, UserProfile } from '@/services/api';
+import { fetchAdmins, createAdmin, resetAdminPassword, UserProfile } from '@/services/api';
 
 const Admins = () => {
   const queryClient = useQueryClient();
@@ -33,6 +33,7 @@ const Admins = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resettingId, setResettingId] = useState<number | null>(null);
 
   const { data: admins = [], isLoading, refetch } = useQuery({
     queryKey: ['admins'],
@@ -65,6 +66,21 @@ const Admins = () => {
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  const handleResetPassword = async (admin: UserProfile) => {
+    const confirmed = window.confirm(
+      `Reset password for ${admin.email}?\n\nThis will generate a new temporary password and email it to them.`
+    );
+    if (!confirmed) return;
+
+    setResettingId(admin.id);
+    const ok = await resetAdminPassword(admin.id);
+    setResettingId(null);
+
+    if (ok) {
+      toast.success(`New password emailed to ${admin.email}`);
+    }
   };
 
   return (
@@ -168,6 +184,7 @@ const Admins = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -192,6 +209,17 @@ const Admins = () => {
                             <Calendar className="h-4 w-4" />
                             {formatDate(admin.created_at)}
                           </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResetPassword(admin)}
+                            disabled={resettingId === admin.id}
+                          >
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            {resettingId === admin.id ? 'Resetting...' : 'Reset password'}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

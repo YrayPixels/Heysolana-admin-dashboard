@@ -375,6 +375,27 @@ export const fetchAdmins = async (): Promise<UserProfile[]> => {
   }
 };
 
+// Reset an admin password (emails new temporary password)
+export const resetAdminPassword = async (adminId: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/reset-admin-password`, {
+      method: 'POST',
+      body: JSON.stringify({ id: adminId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to reset password: ${response.statusText}`);
+    }
+
+    toast.success('Password reset email sent');
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
 // User Distribution Analytics Interfaces
 export interface CountryDistribution {
   country: string;
