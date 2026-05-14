@@ -64,6 +64,41 @@ export interface TrackingData {
   token_usage_by_token_name: NameValueData[];
 }
 
+export interface EngagementDauPoint {
+  date: string;
+  active_users: number;
+}
+
+export interface EngagementSummary {
+  dau_today: number;
+  wau: number;
+  mau_rolling: number;
+  mau_prev_window: number;
+  stickiness: number | null;
+}
+
+export interface JourneyEdge {
+  source: string;
+  target: string;
+  value: number;
+}
+
+export interface JourneyPopularPage {
+  event_name: string;
+  views: number;
+}
+
+export interface EngagementAnalytics {
+  available: boolean;
+  message?: string;
+  dau_series: EngagementDauPoint[];
+  dau_series_source?: string;
+  dau_series_note?: string;
+  summary: EngagementSummary | null;
+  journey_edges: JourneyEdge[];
+  journey_popular_pages: JourneyPopularPage[];
+}
+
 // Error handling helper
 const handleError = (error: Error | { response?: { data?: { message?: string } }; message?: string }) => {
   console.error("API Error:", error);
@@ -154,6 +189,26 @@ export const getTrackingData = async (): Promise<TrackingData | null> => {
     
     const data = await response.json();
     console.log("Tracking data:", data);
+    return data;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getEngagementAnalytics = async (
+  days: 7 | 30 | 90 = 30
+): Promise<EngagementAnalytics | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/track/engagement-analytics?days=${days}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch engagement analytics: ${response.statusText}`);
+    }
+
+    const data = (await response.json()) as EngagementAnalytics;
     return data;
   } catch (error) {
     handleError(error);

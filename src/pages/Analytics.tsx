@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   LineChart,
   Line,
@@ -29,71 +29,84 @@ import {
   Calendar,
   Users,
   Eye,
+  Route,
 } from "lucide-react";
 import {
   getTrackingData,
+  getEngagementAnalytics,
   TrackingData,
+  EngagementAnalytics,
   DateValueData,
   NameValueData,
 } from "@/services/api";
 import GlassCard from "@/components/ui-custom/GlassCard";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import AnimatedText from "@/components/ui-custom/AnimatedText";
 import DashboardLayout from "@/layouts/DashboardLayout";
 
 const Analytics: React.FC = () => {
   const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
+  const [engagement, setEngagement] = useState<EngagementAnalytics | null>(null);
+  const [engagementDays, setEngagementDays] = useState<7 | 30 | 90>(30);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const data = await getTrackingData();
-      if (data) {
-        // Process data to ensure numbers are properly converted
-        const processedData = {
-          ...data,
-          button_clicks_by_button_name:
-            data.button_clicks_by_button_name?.map((item) => ({
-              ...item,
-              total_clicks: Number(item.total_clicks) || 0,
-            })) || [],
-          tool_calls_by_tool_name:
-            data.tool_calls_by_tool_name?.map((item) => ({
-              ...item,
-              total_calls: Number(item.total_calls) || 0,
-            })) || [],
-          page_open_count_by_page_name:
-            data.page_open_count_by_page_name?.map((item) => ({
-              ...item,
-              total_open_count: Number(item.total_open_count) || 0,
-            })) || [],
-          token_usage_by_token_name:
-            data.token_usage_by_token_name?.map((item) => ({
-              ...item,
-              total_usage: Number(item.total_usage) || 0,
-            })) || [],
-        };
-        setTrackingData(processedData);
+  const fetchData = useCallback(
+    async (isRefresh: boolean) => {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
-    } catch (error) {
-      console.error("Failed to fetch analytics data:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+      try {
+        const [data, engagementData] = await Promise.all([
+          getTrackingData(),
+          getEngagementAnalytics(engagementDays),
+        ]);
+        if (data) {
+          const processedData = {
+            ...data,
+            button_clicks_by_button_name:
+              data.button_clicks_by_button_name?.map((item) => ({
+                ...item,
+                total_clicks: Number(item.total_clicks) || 0,
+              })) || [],
+            tool_calls_by_tool_name:
+              data.tool_calls_by_tool_name?.map((item) => ({
+                ...item,
+                total_calls: Number(item.total_calls) || 0,
+              })) || [],
+            page_open_count_by_page_name:
+              data.page_open_count_by_page_name?.map((item) => ({
+                ...item,
+                total_open_count: Number(item.total_open_count) || 0,
+              })) || [],
+            token_usage_by_token_name:
+              data.token_usage_by_token_name?.map((item) => ({
+                ...item,
+                total_usage: Number(item.total_usage) || 0,
+              })) || [],
+          };
+          setTrackingData(processedData);
+        }
+        setEngagement(engagementData);
+      } catch (error) {
+        console.error("Failed to fetch analytics data:", error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [engagementDays]
+  );
 
   const handleRefresh = () => {
-    setRefreshing(true);
-    fetchData();
+    void fetchData(true);
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    void fetchData(false);
+  }, [fetchData]);
 
   // Chart colors matching the theme
   const COLORS = [
@@ -155,6 +168,26 @@ const Analytics: React.FC = () => {
     return [domainMin, domainMax];
   };
 
+  const journeyTransitions =
+    engagement?.journey_edges?.slice(0, 12).map((e) => ({
+      step: `${e.source} → ${e.target}`,
+      transitions: e.value,
+    })) ?? [];
+
+  const popularPagesChart =
+    engagement?.journey_popular_pages?.map((p) => ({
+      page: p.event_name,
+      views: Number(p.views) || 0,
+    })) ?? [];
+
+  const engSummary = engagement?.summary;
+  const mauTrendPct =
+    engSummary && engSummary.mau_prev_window > 0
+      ? ((engSummary.mau_rolling - engSummary.mau_prev_window) /
+          engSummary.mau_prev_window) *
+        100
+      : null;
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -169,7 +202,7 @@ const Analytics: React.FC = () => {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">
               <AnimatedText gradient>Analytics Dashboard</AnimatedText>
@@ -180,17 +213,259 @@ const Analytics: React.FC = () => {
               </AnimatedText>
             </p>
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="bg-gradient-to-r from-solana to-purple-600 hover:opacity-90"
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
-            />
-            Refresh Data
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-lg border border-white/10 p-0.5 bg-black/30">
+              {([7, 30, 90] as const).map((d) => (
+                <Button
+                  key={d}
+                  type="button"
+                  variant={engagementDays === d ? "secondary" : "ghost"}
+                  size="sm"
+                  className="text-xs min-w-[3rem]"
+                  onClick={() => setEngagementDays(d)}
+                >
+                  {d}d
+                </Button>
+              ))}
+            </div>
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="bg-gradient-to-r from-solana to-purple-600 hover:opacity-90"
+            >
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+              />
+              Refresh Data
+            </Button>
+          </div>
         </div>
+
+        {/* MAU / DAU & journey */}
+        {!engagement?.available ? (
+          <GlassCard className="p-4 border-amber-500/30 bg-amber-500/5">
+            <p className="text-sm text-amber-100">
+              {engagement?.message ??
+                "Engagement analytics require the user_activity_events table. Run backend migrations, then send optional user_key with app and page open events from the app for per-user DAU and journeys."}
+            </p>
+          </GlassCard>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-solana" />
+                Active users
+              </h2>
+              <p className="text-xs text-gray-500 max-w-xl text-right">
+                {engagement.dau_series_note}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <GlassCard className="text-center p-4 bg-gradient-to-br from-cyan-500/15 to-transparent">
+                <Calendar className="w-8 h-8 mx-auto mb-2 text-cyan-400" />
+                <h3 className="text-2xl font-bold text-cyan-300">
+                  {(engSummary?.dau_today ?? 0).toLocaleString()}
+                </h3>
+                <p className="text-gray-400 text-sm">DAU today</p>
+              </GlassCard>
+              <GlassCard className="text-center p-4 bg-gradient-to-br from-emerald-500/15 to-transparent">
+                <TrendingUp className="w-8 h-8 mx-auto mb-2 text-emerald-400" />
+                <h3 className="text-2xl font-bold text-emerald-300">
+                  {(engSummary?.wau ?? 0).toLocaleString()}
+                </h3>
+                <p className="text-gray-400 text-sm">WAU (7d)</p>
+              </GlassCard>
+              <GlassCard className="text-center p-4 bg-gradient-to-br from-violet-500/15 to-transparent">
+                <BarChart3 className="w-8 h-8 mx-auto mb-2 text-violet-400" />
+                <h3 className="text-2xl font-bold text-violet-300">
+                  {(engSummary?.mau_rolling ?? 0).toLocaleString()}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  MAU ({engagementDays}d window)
+                </p>
+                {mauTrendPct !== null ? (
+                  <p
+                    className={`text-xs mt-1 ${
+                      mauTrendPct >= 0 ? "text-emerald-400" : "text-rose-400"
+                    }`}
+                  >
+                    {mauTrendPct >= 0 ? "+" : ""}
+                    {mauTrendPct.toFixed(1)}% vs prior window
+                  </p>
+                ) : null}
+              </GlassCard>
+              <GlassCard className="text-center p-4 bg-gradient-to-br from-amber-500/15 to-transparent">
+                <Activity className="w-8 h-8 mx-auto mb-2 text-amber-400" />
+                <h3 className="text-2xl font-bold text-amber-300">
+                  {engSummary?.stickiness != null
+                    ? `${engSummary.stickiness}%`
+                    : "—"}
+                </h3>
+                <p className="text-gray-400 text-sm">Stickiness (DAU / MAU)</p>
+              </GlassCard>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <GlassCard className="p-6">
+                <div className="flex items-center justify-between mb-4 gap-2">
+                  <div className="flex items-center">
+                    <Calendar className="w-5 h-5 mr-2 text-cyan-400" />
+                    <h3 className="text-lg font-medium">
+                      Daily active (
+                      {engagement.dau_series_source === "wallet_sync"
+                        ? "wallets"
+                        : "keys"}
+                      )
+                    </h3>
+                  </div>
+                </div>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={engagement.dau_series || []}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(255,255,255,0.1)"
+                      />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#666"
+                        fontSize={10}
+                        tickFormatter={(d) =>
+                          new Date(d + "T12:00:00").toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        }
+                      />
+                      <YAxis stroke="#666" fontSize={12} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(0, 0, 0, 0.85)",
+                          borderColor: "rgba(255, 255, 255, 0.1)",
+                          borderRadius: "8px",
+                        }}
+                        labelFormatter={(d) => new Date(String(d)).toLocaleDateString()}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="active_users"
+                        name="Active"
+                        stroke="#22d3ee"
+                        strokeWidth={2}
+                        dot={{ r: 2, fill: "#22d3ee" }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </GlassCard>
+
+              <GlassCard className="p-6">
+                <div className="flex items-center mb-4">
+                  <Route className="w-5 h-5 mr-2 text-fuchsia-400" />
+                  <h3 className="text-lg font-medium">Page transitions</h3>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  Consecutive page_view events per user_key (same period as
+                  chart).
+                </p>
+                <div className="h-72">
+                  {journeyTransitions.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={journeyTransitions}
+                        layout="vertical"
+                        margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.08)"
+                        />
+                        <XAxis type="number" stroke="#666" fontSize={11} />
+                        <YAxis
+                          type="category"
+                          dataKey="step"
+                          stroke="#666"
+                          fontSize={9}
+                          width={130}
+                          tickFormatter={(v: string) =>
+                            v.length > 36 ? `${v.slice(0, 34)}…` : v
+                          }
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "rgba(0, 0, 0, 0.85)",
+                            borderColor: "rgba(255, 255, 255, 0.1)",
+                            borderRadius: "8px",
+                          }}
+                        />
+                        <Bar
+                          dataKey="transitions"
+                          fill="#d946ef"
+                          radius={[0, 4, 4, 0]}
+                          name="Count"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-500 text-sm text-center px-4">
+                      No per-user page sequence yet. Send{" "}
+                      <code className="mx-1 text-cyan-400/90">user_key</code>{" "}
+                      (wallet or device id) with page-open tracking to
+                      populate journeys.
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            </div>
+
+            {popularPagesChart.length > 0 ? (
+              <GlassCard className="p-6">
+                <div className="flex items-center mb-4">
+                  <Eye className="w-5 h-5 mr-2 text-purple-400" />
+                  <h3 className="text-lg font-medium">
+                    Popular screens (page_view)
+                  </h3>
+                </div>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={popularPagesChart}
+                      margin={{ bottom: 48, left: 8, right: 8 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(255,255,255,0.1)"
+                      />
+                      <XAxis
+                        dataKey="page"
+                        stroke="#666"
+                        fontSize={11}
+                        angle={-28}
+                        textAnchor="end"
+                        height={70}
+                      />
+                      <YAxis stroke="#666" fontSize={12} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(0, 0, 0, 0.85)",
+                          borderColor: "rgba(255, 255, 255, 0.1)",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Bar
+                        dataKey="views"
+                        fill="#a78bfa"
+                        radius={[4, 4, 0, 0]}
+                        name="Views"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </GlassCard>
+            ) : null}
+          </>
+        )}
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
