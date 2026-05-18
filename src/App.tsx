@@ -16,6 +16,8 @@ import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
 import Admins from "./pages/Admins";
 import PushNotifications from "./pages/PushNotifications";
+import BugReports from "./pages/BugReports";
+import BugReportDetail from "./pages/BugReportDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -157,6 +159,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <PushNotifications />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/bug-reports"
+        element={
+          <ProtectedRoute>
+            <BugReports />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/bug-reports/:id"
+        element={
+          <ProtectedRoute>
+            <BugReportDetail />
           </ProtectedRoute>
         }
       />

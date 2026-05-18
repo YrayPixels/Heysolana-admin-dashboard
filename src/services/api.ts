@@ -1115,3 +1115,179 @@ export const updateProcessingFeeSettings = async (
     return null;
   }
 };
+
+// ============ Bug Reports / Logs (Admin) ============
+
+export type BugReportSeverity = 'critical' | 'warning' | 'info';
+export type BugReportStatus = 'new' | 'pending' | 'fixed';
+export type BugReportType = 'bug' | 'log';
+
+export interface BugReportUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface BugReport {
+  id: number;
+  user_id: number | null;
+  wallet_address: string | null;
+  type: BugReportType;
+  severity: BugReportSeverity;
+  status: BugReportStatus;
+  title: string;
+  summary: string | null;
+  details: string | null;
+  stack_trace: string | null;
+  source: string | null;
+  app_version: string | null;
+  platform: string | null;
+  device_info: string | null;
+  metadata: Record<string, unknown> | null;
+  resolved_at: string | null;
+  resolved_by: number | null;
+  resolver: BugReportUser | null;
+  user: BugReportUser | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BugReportsFilters {
+  status?: string;
+  severity?: string;
+  type?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}
+
+export interface BugReportsResponse {
+  success: boolean;
+  data: BugReport[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+export interface BugReportStats {
+  new: number;
+  pending: number;
+  fixed: number;
+  total: number;
+  open_critical: number;
+  open_warning: number;
+}
+
+export const getBugReports = async (
+  filters: BugReportsFilters = {}
+): Promise<BugReportsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.severity) params.set('severity', filters.severity);
+    if (filters.type) params.set('type', filters.type);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.per_page) params.set('per_page', String(filters.per_page));
+    const url = `${API_BASE_URL}/admin/bug-reports${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch bug reports: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getBugReportStats = async (): Promise<BugReportStats | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/bug-reports/stats`);
+    if (!response.ok) throw new Error(`Failed to fetch bug report stats: ${response.statusText}`);
+    const json = await response.json();
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getBugReport = async (
+  id: number
+): Promise<{ success: boolean; data: BugReport } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/bug-reports/${id}`);
+    if (!response.ok) throw new Error(`Failed to fetch bug report: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateBugReportStatus = async (
+  id: number,
+  status: BugReportStatus
+): Promise<{ success: boolean; data: BugReport } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/bug-reports/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.message || `Failed to update status: ${response.statusText}`);
+    toast.success('Status updated');
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deleteBugReport = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/bug-reports/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error(`Failed to delete report: ${response.statusText}`);
+    toast.success('Report deleted');
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
+export const bulkDeleteBugReports = async (ids: number[]): Promise<number> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/bug-reports/bulk-delete`, {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.message || `Failed to delete reports: ${response.statusText}`);
+    toast.success(json.message || 'Reports deleted');
+    return json.deleted_count ?? ids.length;
+  } catch (error) {
+    handleError(error);
+    return 0;
+  }
+};
+
+export const clearBugReports = async (scope: 'fixed' | 'all'): Promise<number> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/bug-reports/clear`, {
+      method: 'POST',
+      body: JSON.stringify({ scope }),
+    });
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.message || `Failed to clear reports: ${response.statusText}`);
+    toast.success(json.message || 'Reports cleared');
+    return json.deleted_count ?? 0;
+  } catch (error) {
+    handleError(error);
+    return 0;
+  }
+};

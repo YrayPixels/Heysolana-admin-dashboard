@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {
   BarChart3,
   Bell,
+  Bug,
   ChevronFirst,
   ChevronLast,
   LogOut,
@@ -82,6 +83,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       path: "/orders",
     },
     {
+      name: "Bugs & Logs",
+      icon: <Bug className="h-5 w-5" />,
+      path: "/bug-reports",
+    },
+    {
       name: "Settings",
       icon: <Settings className="h-5 w-5" />,
       path: "/settings",
@@ -106,7 +112,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
 
   return (
     <div className="flex min-h-screen bg-background bg-noise">
