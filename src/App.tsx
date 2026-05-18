@@ -16,6 +16,7 @@ import JumiaOrderDetail from "./pages/JumiaOrderDetail";
 import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
 import Admins from "./pages/Admins";
+import PushNotifications from "./pages/PushNotifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -157,6 +158,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Admins />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/push-notifications"
+        element={
+          <ProtectedRoute>
+            <PushNotifications />
           </ProtectedRoute>
         }
       />

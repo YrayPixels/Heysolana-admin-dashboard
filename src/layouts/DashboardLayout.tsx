@@ -73,6 +73,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       path: "/users",
     },
     {
+      name: "Push notifications",
+      icon: <Bell className="h-5 w-5" />,
+      path: "/push-notifications",
+    },
+    {
       name: "Waitlist",
       icon: <ClipboardList className="h-5 w-5" />,
       path: "/waitlist",

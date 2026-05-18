@@ -987,6 +987,139 @@ export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings 
   }
 };
 
+// ============ Push notifications (Admin) ============
+
+export interface PushRecipient {
+  id: number;
+  user_id: number | null;
+  phone_number: string | null;
+  username: string | null;
+  device_type: "ios" | "android";
+  is_active: boolean;
+  push_token_preview: string;
+  last_used_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PushRecipientsFilters {
+  search?: string;
+  device_type?: "ios" | "android" | "all";
+  phone_number?: string;
+  active_only?: boolean;
+  page?: number;
+  per_page?: number;
+}
+
+export interface PushRecipientsResponse {
+  recipients: PushRecipient[];
+  meta: {
+    total: number;
+    unique_phones: number;
+    current_page: number;
+    per_page: number;
+    last_page: number;
+  };
+}
+
+export interface PushPreviewResponse {
+  device_count: number;
+  user_count: number;
+  ios_count: number;
+  android_count: number;
+}
+
+export interface AdminSendPushPayload {
+  title: string;
+  body: string;
+  target: "all" | "filtered" | "selected";
+  device_type?: "ios" | "android";
+  search?: string;
+  phone_number?: string;
+  phone_numbers?: string[];
+  token_ids?: number[];
+  active_only?: boolean;
+  data?: Record<string, unknown>;
+}
+
+export const getPushRecipients = async (
+  filters: PushRecipientsFilters = {}
+): Promise<PushRecipientsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.search) params.set("search", filters.search);
+    if (filters.device_type && filters.device_type !== "all") {
+      params.set("device_type", filters.device_type);
+    }
+    if (filters.phone_number) params.set("phone_number", filters.phone_number);
+    if (filters.active_only === false) params.set("active_only", "0");
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+    const url = `${API_BASE_URL}/admin/notifications/recipients${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch recipients: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const previewAdminPush = async (
+  payload: Omit<AdminSendPushPayload, "title" | "body">
+): Promise<PushPreviewResponse | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/notifications/preview`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || `Preview failed: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const sendAdminPush = async (
+  payload: AdminSendPushPayload
+): Promise<{ sent_count: number; device_count: number } | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/notifications/send`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          ...payload,
+          data: payload.data ?? { type: "admin_broadcast" },
+        }),
+      }
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(json.message || `Send failed: ${response.statusText}`);
+    }
+    toast.success(`Sent to ${json.sent_count ?? 0} device(s)`);
+    return {
+      sent_count: json.sent_count ?? 0,
+      device_count: json.device_count ?? 0,
+    };
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 export const updateProcessingFeeSettings = async (
   payload: Partial<{
     processing_fee_percent: number;
