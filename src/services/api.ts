@@ -1,16 +1,6 @@
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/config/env";
 
-export interface WaitlistUser {
-  id: number;
-  email_address: string;
-  first_name: string;
-  last_name: string;
-  country: string;
-  wallet_address: string;
-  created_at?: string;
-}
-
 export interface UserProfile {
   id: number;
   name: string;
@@ -158,25 +148,6 @@ export const validateToken = async (): Promise<boolean> => {
   }
 };
 
-// Get waitlist users
-export const getWaitlistUsers = async (): Promise<WaitlistUser[]> => {
-  try {
-    console.log("Fetching waitlist users from", `${API_BASE_URL}/get_waitlist`);
-    const response = await authenticatedFetch(`${API_BASE_URL}/get_waitlist`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch waitlist: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    console.log("Waitlist data:", data);
-    return data || [];
-  } catch (error) {
-    handleError(error);
-    return [];
-  }
-};
-
 // Get tracking data
 export const getTrackingData = async (): Promise<TrackingData | null> => {
   try {
@@ -213,27 +184,6 @@ export const getEngagementAnalytics = async (
   } catch (error) {
     handleError(error);
     return null;
-  }
-};
-
-// Add a user to the waitlist
-export const addToWaitlist = async (userData: Omit<WaitlistUser, 'id'>): Promise<boolean> => {
-  try {
-    console.log("Adding user to waitlist:", userData);
-    const response = await authenticatedFetch(`${API_BASE_URL}/add_to_waitlist`, {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to add to waitlist: ${response.statusText}`);
-    }
-    
-    toast.success('User added to waitlist successfully');
-    return true;
-  } catch (error) {
-    handleError(error);
-    return false;
   }
 };
 
@@ -529,6 +479,9 @@ export interface User {
 export interface UsersResponse {
   users: User[];
   total: number;
+  verified_count: number;
+  wallet_users_count: number;
+  pin_users_count: number;
   current_page: number;
   last_page: number;
   per_page: number;
@@ -608,6 +561,15 @@ export const getUsers = async (filters: UsersFilters = {}): Promise<UsersRespons
     }
     
     const total = users.length;
+    const verified_count = users.filter(
+      (user) => user.verification_status === 'verified'
+    ).length;
+    const wallet_users_count = users.filter(
+      (user) => user.wallet_address && user.wallet_address !== ''
+    ).length;
+    const pin_users_count = users.filter(
+      (user) => user.pin && user.pin !== ''
+    ).length;
     const current_page = filters.page || 1;
     const per_page = filters.per_page || 10;
     const last_page = Math.ceil(total / per_page);
@@ -620,6 +582,9 @@ export const getUsers = async (filters: UsersFilters = {}): Promise<UsersRespons
     return {
       users: paginatedUsers,
       total,
+      verified_count,
+      wallet_users_count,
+      pin_users_count,
       current_page,
       last_page,
       per_page

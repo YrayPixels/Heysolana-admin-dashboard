@@ -223,7 +223,7 @@ const Users = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {usersData?.users?.filter(u => u.verification_status === 'verified').length || 0}
+                {usersData?.verified_count ?? 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 Successfully verified
@@ -238,7 +238,7 @@ const Users = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {usersData?.users?.filter(u => u.wallet_address && u.wallet_address !== '').length || 0}
+                {usersData?.wallet_users_count ?? 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 With wallet addresses
@@ -253,7 +253,7 @@ const Users = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {usersData?.users?.filter(u => u.pin && u.pin !== '').length || 0}
+                {usersData?.pin_users_count ?? 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 With security PINs

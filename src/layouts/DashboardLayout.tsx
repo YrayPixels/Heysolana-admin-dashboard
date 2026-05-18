@@ -5,7 +5,6 @@ import {
   Bell,
   ChevronFirst,
   ChevronLast,
-  ClipboardList,
   LogOut,
   Menu,
   Package,
@@ -76,11 +75,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Push notifications",
       icon: <Bell className="h-5 w-5" />,
       path: "/push-notifications",
-    },
-    {
-      name: "Waitlist",
-      icon: <ClipboardList className="h-5 w-5" />,
-      path: "/waitlist",
     },
     {
       name: "Orders",

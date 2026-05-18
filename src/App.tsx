@@ -9,7 +9,6 @@ import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
 import UserDistribution from "./pages/UserDistribution";
 import Users from "./pages/Users";
-import WaitlistPage from "./pages/WaitlistPage";
 import ProfilePage from "./pages/ProfilePage";
 import Orders from "./pages/Orders";
 import JumiaOrderDetail from "./pages/JumiaOrderDetail";
@@ -104,15 +103,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Users />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/waitlist"
-        element={
-          <ProtectedRoute>
-            <WaitlistPage />
           </ProtectedRoute>
         }
       />
