@@ -938,6 +938,10 @@ export interface ProcessingFeeSettings {
   treasury_wallet_address: string;
   delivery_fee_jumia_ngn: string;
   delivery_fee_crossmint_usd: string;
+  /** Jupiter referral account pubkey for swap integrator fees */
+  jupiter_referral_account: string;
+  /** Basis points (50–255). Use 0 to disable Hey Solana swap fee. */
+  jupiter_referral_fee_bps: string;
 }
 
 export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings | null> => {
@@ -1093,6 +1097,8 @@ export const updateProcessingFeeSettings = async (
     treasury_wallet_address: string;
     delivery_fee_jumia_ngn: number;
     delivery_fee_crossmint_usd: number;
+    jupiter_referral_account: string;
+    jupiter_referral_fee_bps: number;
   }>
 ): Promise<ProcessingFeeSettings | null> => {
   try {

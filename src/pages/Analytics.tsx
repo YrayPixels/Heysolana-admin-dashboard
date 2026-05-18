@@ -40,6 +40,10 @@ import {
   NameValueData,
 } from "@/services/api";
 import GlassCard from "@/components/ui-custom/GlassCard";
+import ChartCardHeader from "@/components/ui-custom/ChartCardHeader";
+import ChartExpandModal, {
+  type ExpandedChartConfig,
+} from "@/components/ui-custom/ChartExpandModal";
 import { Button } from "@/components/ui/button";
 import AnimatedText from "@/components/ui-custom/AnimatedText";
 import DashboardLayout from "@/layouts/DashboardLayout";
@@ -50,6 +54,11 @@ const Analytics: React.FC = () => {
   const [engagementDays, setEngagementDays] = useState<7 | 30 | 90>(30);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedChart, setExpandedChart] = useState<ExpandedChartConfig>(null);
+
+  const openChart = (config: NonNullable<ExpandedChartConfig>) => {
+    setExpandedChart(config);
+  };
 
   const fetchData = useCallback(
     async (isRefresh: boolean) => {
@@ -150,10 +159,11 @@ const Analytics: React.FC = () => {
     if (!data || data.length === 0) return [0, 10];
 
     const values = data.map((item) => {
-      if (dataKey === "total_calls") return item.total_calls || 0;
-      if (dataKey === "total_clicks") return item.total_clicks || 0;
-      if (dataKey === "total_open_count") return item.total_open_count || 0;
-      if (dataKey === "total_usage") return item.total_usage || 0;
+      if (dataKey === "total_calls") return Number(item.total_calls) || 0;
+      if (dataKey === "total_clicks") return Number(item.total_clicks) || 0;
+      if (dataKey === "total_open_count")
+        return Number(item.total_open_count) || 0;
+      if (dataKey === "total_usage") return Number(item.total_usage) || 0;
       return 0;
     });
 
@@ -167,6 +177,71 @@ const Analytics: React.FC = () => {
 
     return [domainMin, domainMax];
   };
+
+  const toolUsageChartData = [...(trackingData?.tool_calls_by_tool_name ?? [])]
+    .map((item) => ({
+      ...item,
+      total_calls: Number(item.total_calls) || 0,
+    }))
+    .sort((a, b) => b.total_calls - a.total_calls);
+
+  const toolUsageChartHeight = Math.max(256, toolUsageChartData.length * 28);
+  const toolUsageExpandedHeight = Math.max(
+    520,
+    toolUsageChartData.length * 32
+  );
+
+  const tooltipStyle = {
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: "8px",
+  };
+
+  const renderToolUsageChart = (height: number, yAxisWidth = 160) =>
+    toolUsageChartData.length ? (
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart
+          data={toolUsageChartData}
+          layout="vertical"
+          margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="rgba(255,255,255,0.1)"
+          />
+          <XAxis
+            type="number"
+            stroke="#666"
+            fontSize={12}
+            domain={getYAxisDomain(toolUsageChartData, "total_calls")}
+            tickFormatter={(value) => value.toLocaleString()}
+          />
+          <YAxis
+            type="category"
+            dataKey="tool_name"
+            stroke="#666"
+            fontSize={11}
+            width={yAxisWidth}
+            tick={{ fill: "#999" }}
+          />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(value: number) => [
+              Number(value).toLocaleString(),
+              "Calls",
+            ]}
+          />
+          <Bar dataKey="total_calls" fill="#06B6D4" radius={[0, 4, 4, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    ) : (
+      <div className="flex items-center justify-center h-full text-gray-400">
+        <div className="text-center">
+          <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <p>No tool usage data available</p>
+        </div>
+      </div>
+    );
 
   const journeyTransitions =
     engagement?.journey_edges?.slice(0, 12).map((e) => ({
@@ -307,18 +382,65 @@ const Analytics: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <GlassCard className="p-6">
-                <div className="flex items-center justify-between mb-4 gap-2">
-                  <div className="flex items-center">
-                    <Calendar className="w-5 h-5 mr-2 text-cyan-400" />
-                    <h3 className="text-lg font-medium">
-                      Daily active (
-                      {engagement.dau_series_source === "wallet_sync"
-                        ? "wallets"
-                        : "keys"}
-                      )
-                    </h3>
-                  </div>
-                </div>
+                <ChartCardHeader
+                  title={`Daily active (${
+                    engagement.dau_series_source === "wallet_sync"
+                      ? "wallets"
+                      : "keys"
+                  })`}
+                  icon={<Calendar className="w-5 h-5 text-cyan-400" />}
+                  onExpand={() =>
+                    openChart({
+                      title: `Daily active (${
+                        engagement.dau_series_source === "wallet_sync"
+                          ? "wallets"
+                          : "keys"
+                      })`,
+                      icon: <Calendar className="w-5 h-5 text-cyan-400" />,
+                      render: () => (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={engagement.dau_series || []}>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="rgba(255,255,255,0.1)"
+                            />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#666"
+                              fontSize={11}
+                              tickFormatter={(d) =>
+                                new Date(d + "T12:00:00").toLocaleDateString(
+                                  "en-US",
+                                  { month: "short", day: "numeric" }
+                                )
+                              }
+                            />
+                            <YAxis
+                              stroke="#666"
+                              fontSize={12}
+                              allowDecimals={false}
+                            />
+                            <Tooltip
+                              contentStyle={tooltipStyle}
+                              labelFormatter={(d) =>
+                                new Date(String(d)).toLocaleDateString()
+                              }
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="active_users"
+                              name="Active"
+                              stroke="#22d3ee"
+                              strokeWidth={2}
+                              dot={{ r: 3, fill: "#22d3ee" }}
+                              activeDot={{ r: 6 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ),
+                    })
+                  }
+                />
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={engagement.dau_series || []}>
@@ -361,14 +483,52 @@ const Analytics: React.FC = () => {
               </GlassCard>
 
               <GlassCard className="p-6">
-                <div className="flex items-center mb-4">
-                  <Route className="w-5 h-5 mr-2 text-fuchsia-400" />
-                  <h3 className="text-lg font-medium">Page transitions</h3>
-                </div>
-                <p className="text-xs text-gray-500 mb-3">
-                  Consecutive page_view events per user_key (same period as
-                  chart).
-                </p>
+                <ChartCardHeader
+                  title="Page transitions"
+                  icon={<Route className="w-5 h-5 text-fuchsia-400" />}
+                  subtitle="Consecutive page_view events per user_key (same period as chart)."
+                  expandable={journeyTransitions.length > 0}
+                  onExpand={() =>
+                    openChart({
+                      title: "Page transitions",
+                      icon: <Route className="w-5 h-5 text-fuchsia-400" />,
+                      subtitle:
+                        "Consecutive page_view events per user_key (same period as chart).",
+                      render: () => (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={journeyTransitions}
+                            layout="vertical"
+                            margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="rgba(255,255,255,0.08)"
+                            />
+                            <XAxis type="number" stroke="#666" fontSize={12} />
+                            <YAxis
+                              type="category"
+                              dataKey="step"
+                              stroke="#666"
+                              fontSize={11}
+                              width={220}
+                              tickFormatter={(v: string) =>
+                                v.length > 52 ? `${v.slice(0, 50)}…` : v
+                              }
+                            />
+                            <Tooltip contentStyle={tooltipStyle} />
+                            <Bar
+                              dataKey="transitions"
+                              fill="#d946ef"
+                              radius={[0, 4, 4, 0]}
+                              name="Count"
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ),
+                    })
+                  }
+                />
                 <div className="h-72">
                   {journeyTransitions.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -421,12 +581,49 @@ const Analytics: React.FC = () => {
 
             {popularPagesChart.length > 0 ? (
               <GlassCard className="p-6">
-                <div className="flex items-center mb-4">
-                  <Eye className="w-5 h-5 mr-2 text-purple-400" />
-                  <h3 className="text-lg font-medium">
-                    Popular screens (page_view)
-                  </h3>
-                </div>
+                <ChartCardHeader
+                  title="Popular screens (page_view)"
+                  icon={<Eye className="w-5 h-5 text-purple-400" />}
+                  onExpand={() =>
+                    openChart({
+                      title: "Popular screens (page_view)",
+                      icon: <Eye className="w-5 h-5 text-purple-400" />,
+                      render: () => (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={popularPagesChart}
+                            margin={{ bottom: 56, left: 8, right: 8 }}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="rgba(255,255,255,0.1)"
+                            />
+                            <XAxis
+                              dataKey="page"
+                              stroke="#666"
+                              fontSize={12}
+                              angle={-28}
+                              textAnchor="end"
+                              height={80}
+                            />
+                            <YAxis
+                              stroke="#666"
+                              fontSize={12}
+                              allowDecimals={false}
+                            />
+                            <Tooltip contentStyle={tooltipStyle} />
+                            <Bar
+                              dataKey="views"
+                              fill="#a78bfa"
+                              radius={[4, 4, 0, 0]}
+                              name="Views"
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ),
+                    })
+                  }
+                />
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -506,10 +703,64 @@ const Analytics: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Button Clicks Over Time */}
           <GlassCard className="p-6">
-            <div className="flex items-center mb-4">
-              <MousePointer className="w-5 h-5 mr-2 text-green-400" />
-              <h3 className="text-lg font-medium">Button Clicks Over Time</h3>
-            </div>
+            <ChartCardHeader
+              title="Button Clicks Over Time"
+              icon={<MousePointer className="w-5 h-5 text-green-400" />}
+              onExpand={() =>
+                openChart({
+                  title: "Button Clicks Over Time",
+                  icon: <MousePointer className="w-5 h-5 text-green-400" />,
+                  render: () => (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trackingData?.button_clicks_by_date || []}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.1)"
+                        />
+                        <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                        <YAxis
+                          stroke="#666"
+                          fontSize={12}
+                          domain={getYAxisDomain(
+                            trackingData?.button_clicks_by_date || [],
+                            "total_clicks"
+                          )}
+                          tickFormatter={(value) => value.toLocaleString()}
+                        />
+                        <Tooltip contentStyle={tooltipStyle} />
+                        <Area
+                          type="monotone"
+                          dataKey="total_clicks"
+                          stroke="#00FFA1"
+                          fill="url(#greenGradientExpanded)"
+                          strokeWidth={2}
+                        />
+                        <defs>
+                          <linearGradient
+                            id="greenGradientExpanded"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor="#00FFA1"
+                              stopOpacity={0.3}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor="#00FFA1"
+                              stopOpacity={0}
+                            />
+                          </linearGradient>
+                        </defs>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ),
+                })
+              }
+            />
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trackingData?.button_clicks_by_date || []}>
@@ -560,10 +811,45 @@ const Analytics: React.FC = () => {
 
           {/* Tool Calls Over Time */}
           <GlassCard className="p-6">
-            <div className="flex items-center mb-4">
-              <Zap className="w-5 h-5 mr-2 text-blue-400" />
-              <h3 className="text-lg font-medium">Tool Calls Over Time</h3>
-            </div>
+            <ChartCardHeader
+              title="Tool Calls Over Time"
+              icon={<Zap className="w-5 h-5 text-blue-400" />}
+              onExpand={() =>
+                openChart({
+                  title: "Tool Calls Over Time",
+                  icon: <Zap className="w-5 h-5 text-blue-400" />,
+                  render: () => (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trackingData?.tool_calls_by_date || []}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.1)"
+                        />
+                        <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                        <YAxis
+                          stroke="#666"
+                          fontSize={12}
+                          domain={getYAxisDomain(
+                            trackingData?.tool_calls_by_date || [],
+                            "total_calls"
+                          )}
+                          tickFormatter={(value) => value.toLocaleString()}
+                        />
+                        <Tooltip contentStyle={tooltipStyle} />
+                        <Line
+                          type="monotone"
+                          dataKey="total_calls"
+                          stroke="#06B6D4"
+                          strokeWidth={3}
+                          dot={{ fill: "#06B6D4", r: 4 }}
+                          activeDot={{ r: 6, fill: "#06B6D4" }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ),
+                })
+              }
+            />
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trackingData?.tool_calls_by_date || []}>
@@ -606,10 +892,42 @@ const Analytics: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* App Opens Over Time */}
           <GlassCard className="p-6">
-            <div className="flex items-center mb-4">
-              <Smartphone className="w-5 h-5 mr-2 text-purple-400" />
-              <h3 className="text-lg font-medium">App Opens Over Time</h3>
-            </div>
+            <ChartCardHeader
+              title="App Opens Over Time"
+              icon={<Smartphone className="w-5 h-5 text-purple-400" />}
+              onExpand={() =>
+                openChart({
+                  title: "App Opens Over Time",
+                  icon: <Smartphone className="w-5 h-5 text-purple-400" />,
+                  render: () => (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={trackingData?.app_open_count_by_date || []}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.1)"
+                        />
+                        <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                        <YAxis
+                          stroke="#666"
+                          fontSize={12}
+                          domain={getYAxisDomain(
+                            trackingData?.app_open_count_by_date || [],
+                            "total_open_count"
+                          )}
+                          tickFormatter={(value) => value.toLocaleString()}
+                        />
+                        <Tooltip contentStyle={tooltipStyle} />
+                        <Bar
+                          dataKey="total_open_count"
+                          fill="#8B5CF6"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ),
+                })
+              }
+            />
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={trackingData?.app_open_count_by_date || []}>
@@ -646,10 +964,64 @@ const Analytics: React.FC = () => {
 
           {/* Page Views Over Time */}
           <GlassCard className="p-6">
-            <div className="flex items-center mb-4">
-              <FileText className="w-5 h-5 mr-2 text-orange-400" />
-              <h3 className="text-lg font-medium">Page Views Over Time</h3>
-            </div>
+            <ChartCardHeader
+              title="Page Views Over Time"
+              icon={<FileText className="w-5 h-5 text-orange-400" />}
+              onExpand={() =>
+                openChart({
+                  title: "Page Views Over Time",
+                  icon: <FileText className="w-5 h-5 text-orange-400" />,
+                  render: () => (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trackingData?.page_open_count_by_date || []}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.1)"
+                        />
+                        <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                        <YAxis
+                          stroke="#666"
+                          fontSize={12}
+                          domain={getYAxisDomain(
+                            trackingData?.page_open_count_by_date || [],
+                            "total_open_count"
+                          )}
+                          tickFormatter={(value) => value.toLocaleString()}
+                        />
+                        <Tooltip contentStyle={tooltipStyle} />
+                        <Area
+                          type="monotone"
+                          dataKey="total_open_count"
+                          stroke="#F97316"
+                          fill="url(#orangeGradientExpanded)"
+                          strokeWidth={2}
+                        />
+                        <defs>
+                          <linearGradient
+                            id="orangeGradientExpanded"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor="#F97316"
+                              stopOpacity={0.3}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor="#F97316"
+                              stopOpacity={0}
+                            />
+                          </linearGradient>
+                        </defs>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ),
+                })
+              }
+            />
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trackingData?.page_open_count_by_date || []}>
@@ -703,12 +1075,96 @@ const Analytics: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Button Clicks Distribution */}
           <GlassCard className="p-6">
-            <div className="flex items-center mb-4">
-              <PieChartIcon className="w-5 h-5 mr-2 text-green-400" />
-              <h3 className="text-lg font-medium">
-                Button Clicks Distribution
-              </h3>
-            </div>
+            <ChartCardHeader
+              title="Button Clicks Distribution"
+              icon={<PieChartIcon className="w-5 h-5 text-green-400" />}
+              expandable={
+                (trackingData?.button_clicks_by_button_name?.length ?? 0) > 0
+              }
+              onExpand={() =>
+                openChart({
+                  title: "Button Clicks Distribution",
+                  icon: <PieChartIcon className="w-5 h-5 text-green-400" />,
+                  render: () => (
+                    <div className="h-full flex gap-6">
+                      <div className="flex-1 min-w-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={trackingData!.button_clicks_by_button_name}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              outerRadius={140}
+                              fill="#8884d8"
+                              dataKey="total_clicks"
+                            >
+                              {trackingData!.button_clicks_by_button_name.map(
+                                (_entry, index) => (
+                                  <Cell
+                                    key={`cell-expanded-${index}`}
+                                    fill={COLORS[index % COLORS.length]}
+                                  />
+                                )
+                              )}
+                            </Pie>
+                            <Tooltip contentStyle={tooltipStyle} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="w-72 shrink-0 overflow-y-auto space-y-2 pr-2">
+                        {[...trackingData!.button_clicks_by_button_name]
+                          .sort(
+                            (a, b) =>
+                              (b.total_clicks || 0) - (a.total_clicks || 0)
+                          )
+                          .map((button, index) => {
+                            const totalClicks =
+                              trackingData!.button_clicks_by_button_name.reduce(
+                                (sum, b) => sum + (b.total_clicks || 0),
+                                0
+                              );
+                            const percentage =
+                              totalClicks > 0
+                                ? (
+                                    ((button.total_clicks || 0) / totalClicks) *
+                                    100
+                                  ).toFixed(1)
+                                : "0.0";
+                            return (
+                              <div
+                                key={button.button_name}
+                                className="flex items-center justify-between py-1"
+                              >
+                                <div className="flex items-center min-w-0">
+                                  <div
+                                    className="w-3 h-3 rounded-full mr-2 shrink-0"
+                                    style={{
+                                      backgroundColor:
+                                        COLORS[index % COLORS.length],
+                                    }}
+                                  />
+                                  <span className="text-sm text-gray-300 truncate">
+                                    {button.button_name}
+                                  </span>
+                                </div>
+                                <div className="text-right ml-2 shrink-0">
+                                  <div className="text-sm font-medium text-white">
+                                    {percentage}%
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    {(button.total_clicks || 0).toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ),
+                })
+              }
+            />
             <div className="h-64 flex">
               {trackingData?.button_clicks_by_button_name?.length ? (
                 <>
@@ -811,60 +1267,67 @@ const Analytics: React.FC = () => {
 
           {/* Tool Usage Distribution */}
           <GlassCard className="p-6">
-            <div className="flex items-center mb-4">
-              <BarChart3 className="w-5 h-5 mr-2 text-blue-400" />
-              <h3 className="text-lg font-medium">Tool Usage Distribution</h3>
-            </div>
-            <div className="h-64">
-              {trackingData?.tool_calls_by_tool_name?.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={trackingData.tool_calls_by_tool_name}
-                    layout="horizontal"
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="rgba(255,255,255,0.1)"
-                    />
-                    <XAxis
-                      type="number"
-                      stroke="#666"
-                      fontSize={12}
-                      domain={getYAxisDomain(
-                        trackingData?.tool_calls_by_tool_name || [],
-                        "total_calls"
-                      )}
-                      tickFormatter={(value) => value.toLocaleString()}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="tool_name"
-                      stroke="#666"
-                      fontSize={10}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(0, 0, 0, 0.8)",
-                        borderColor: "rgba(255, 255, 255, 0.1)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="total_calls"
-                      fill="#06B6D4"
-                      radius={[0, 4, 4, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
-                  <div className="text-center">
-                    <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No tool usage data available</p>
-                  </div>
-                </div>
-              )}
+            <ChartCardHeader
+              title="Tool Usage Distribution"
+              icon={<BarChart3 className="w-5 h-5 text-blue-400" />}
+              expandable={toolUsageChartData.length > 0}
+              onExpand={() =>
+                openChart({
+                  title: "Tool Usage Distribution",
+                  icon: <BarChart3 className="w-5 h-5 text-blue-400" />,
+                  scrollable: true,
+                  render: () => (
+                    <ResponsiveContainer
+                      width="100%"
+                      height={toolUsageExpandedHeight}
+                    >
+                      <BarChart
+                        data={toolUsageChartData}
+                        layout="vertical"
+                        margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.1)"
+                        />
+                        <XAxis
+                          type="number"
+                          stroke="#666"
+                          fontSize={12}
+                          domain={getYAxisDomain(
+                            toolUsageChartData,
+                            "total_calls"
+                          )}
+                          tickFormatter={(v) => v.toLocaleString()}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="tool_name"
+                          stroke="#666"
+                          fontSize={11}
+                          width={220}
+                          tick={{ fill: "#999" }}
+                        />
+                        <Tooltip
+                          contentStyle={tooltipStyle}
+                          formatter={(value: number) => [
+                            Number(value).toLocaleString(),
+                            "Calls",
+                          ]}
+                        />
+                        <Bar
+                          dataKey="total_calls"
+                          fill="#06B6D4"
+                          radius={[0, 4, 4, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ),
+                })
+              }
+            />
+            <div className="max-h-96 overflow-y-auto">
+              {renderToolUsageChart(toolUsageChartHeight)}
             </div>
           </GlassCard>
         </div>
@@ -873,10 +1336,44 @@ const Analytics: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Page Views Distribution */}
           <GlassCard className="p-6">
-            <div className="flex items-center mb-4">
-              <Eye className="w-5 h-5 mr-2 text-purple-400" />
-              <h3 className="text-lg font-medium">Page Views Distribution</h3>
-            </div>
+            <ChartCardHeader
+              title="Page Views Distribution"
+              icon={<Eye className="w-5 h-5 text-purple-400" />}
+              expandable={
+                (trackingData?.page_open_count_by_page_name?.length ?? 0) > 0
+              }
+              onExpand={() =>
+                openChart({
+                  title: "Page Views Distribution",
+                  icon: <Eye className="w-5 h-5 text-purple-400" />,
+                  render: () => (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={trackingData!.page_open_count_by_page_name}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.1)"
+                        />
+                        <XAxis
+                          dataKey="page_name"
+                          stroke="#666"
+                          fontSize={12}
+                          angle={-28}
+                          textAnchor="end"
+                          height={90}
+                        />
+                        <YAxis stroke="#666" fontSize={12} />
+                        <Tooltip contentStyle={tooltipStyle} />
+                        <Bar
+                          dataKey="total_open_count"
+                          fill="#8B5CF6"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ),
+                })
+              }
+            />
             <div className="h-64">
               {trackingData?.page_open_count_by_page_name?.length ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -921,10 +1418,48 @@ const Analytics: React.FC = () => {
 
           {/* Token Usage Distribution */}
           <GlassCard className="p-6">
-            <div className="flex items-center mb-4">
-              <Activity className="w-5 h-5 mr-2 text-orange-400" />
-              <h3 className="text-lg font-medium">Token Usage Distribution</h3>
-            </div>
+            <ChartCardHeader
+              title="Token Usage Distribution"
+              icon={<Activity className="w-5 h-5 text-orange-400" />}
+              expandable={
+                (trackingData?.token_usage_by_token_name?.length ?? 0) > 0
+              }
+              onExpand={() =>
+                openChart({
+                  title: "Token Usage Distribution",
+                  icon: <Activity className="w-5 h-5 text-orange-400" />,
+                  render: () => (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={trackingData!.token_usage_by_token_name}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ token_name, total_usage }) =>
+                            `${token_name}: ${total_usage}`
+                          }
+                          outerRadius={160}
+                          fill="#8884d8"
+                          dataKey="total_usage"
+                        >
+                          {trackingData!.token_usage_by_token_name.map(
+                            (_entry, index) => (
+                              <Cell
+                                key={`cell-expanded-token-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            )
+                          )}
+                        </Pie>
+                        <Tooltip contentStyle={tooltipStyle} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ),
+                })
+              }
+            />
             <div className="h-64">
               {trackingData?.token_usage_by_token_name?.length ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -972,6 +1507,11 @@ const Analytics: React.FC = () => {
           </GlassCard>
         </div>
       </div>
+
+      <ChartExpandModal
+        chart={expandedChart}
+        onClose={() => setExpandedChart(null)}
+      />
     </DashboardLayout>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Percent, Wallet, Truck } from 'lucide-react';
+import { Save, Percent, Wallet, Truck, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,8 @@ const Settings = () => {
   const [treasury, setTreasury] = useState('');
   const [deliveryFeeJumiaNgn, setDeliveryFeeJumiaNgn] = useState('');
   const [deliveryFeeCrossmintUsd, setDeliveryFeeCrossmintUsd] = useState('');
+  const [jupiterReferralAccount, setJupiterReferralAccount] = useState('');
+  const [jupiterReferralFeeBps, setJupiterReferralFeeBps] = useState('');
   const [saving, setSaving] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
@@ -35,6 +37,8 @@ const Settings = () => {
       setTreasury(settings.treasury_wallet_address ?? '');
       setDeliveryFeeJumiaNgn(settings.delivery_fee_jumia_ngn ?? '');
       setDeliveryFeeCrossmintUsd(settings.delivery_fee_crossmint_usd ?? '');
+      setJupiterReferralAccount(settings.jupiter_referral_account ?? '');
+      setJupiterReferralFeeBps(settings.jupiter_referral_fee_bps ?? '');
     }
   }, [settings]);
 
@@ -47,6 +51,8 @@ const Settings = () => {
       treasury_wallet_address: treasury.trim() === '' ? undefined : treasury.trim(),
       delivery_fee_jumia_ngn: deliveryFeeJumiaNgn === '' ? undefined : Number(deliveryFeeJumiaNgn),
       delivery_fee_crossmint_usd: deliveryFeeCrossmintUsd === '' ? undefined : Number(deliveryFeeCrossmintUsd),
+      jupiter_referral_account: jupiterReferralAccount.trim() === '' ? undefined : jupiterReferralAccount.trim(),
+      jupiter_referral_fee_bps: jupiterReferralFeeBps === '' ? undefined : Number(jupiterReferralFeeBps),
     });
     setSaving(false);
     if (result) {
@@ -142,6 +148,61 @@ const Settings = () => {
                     onChange={(e) => setDeliveryFeeCrossmintUsd(e.target.value)}
                     className="bg-white/5 border-white/10"
                   />
+                </div>
+                <Button onClick={handleSave} disabled={saving} className="w-fit">
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? 'Saving...' : 'Save all settings'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowLeftRight className="h-5 w-5" />
+              Swap fee (Jupiter)
+            </CardTitle>
+            <CardDescription>
+              Hey Solana fee on in-app token swaps via Jupiter Referral Program. Set your Jupiter referral account pubkey and fee in basis points (50–255 = 0.5%–2.55%). Use 0 to disable. The wallet app reads these values from the public settings API.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <div className="grid gap-6 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="jupiter-referral-account">Jupiter referral account</Label>
+                  <Input
+                    id="jupiter-referral-account"
+                    type="text"
+                    placeholder="Referral account pubkey from referral.jup.ag"
+                    value={jupiterReferralAccount}
+                    onChange={(e) => setJupiterReferralAccount(e.target.value)}
+                    className="bg-white/5 border-white/10 font-mono text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="jupiter-referral-fee-bps">Swap fee (basis points)</Label>
+                  <Input
+                    id="jupiter-referral-fee-bps"
+                    type="number"
+                    min={0}
+                    max={255}
+                    step={1}
+                    placeholder="50"
+                    value={jupiterReferralFeeBps}
+                    onChange={(e) => setJupiterReferralFeeBps(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    50 bps = 0.5%. Jupiter minimum when enabled is 50 bps. Set to 0 to turn off integrator fee.
+                  </p>
                 </div>
                 <Button onClick={handleSave} disabled={saving} className="w-fit">
                   <Save className="mr-2 h-4 w-4" />
