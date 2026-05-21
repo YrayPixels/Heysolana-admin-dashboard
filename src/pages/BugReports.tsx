@@ -47,6 +47,13 @@ const STATUS_TABS: { value: string; label: string }[] = [
   { value: 'fixed', label: 'Fixed' },
 ];
 
+const SOURCE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all', label: 'All sources' },
+  { value: 'backend-api', label: 'Backend API' },
+  { value: 'wallet', label: 'Wallet app' },
+  { value: 'mobile', label: 'Mobile app' },
+];
+
 function formatDate(iso: string | undefined) {
   if (!iso) return '—';
   return new Date(iso).toLocaleString(undefined, {
@@ -85,6 +92,7 @@ const BugReports = () => {
   const [statusTab, setStatusTab] = useState('new');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
@@ -98,12 +106,13 @@ const BugReports = () => {
   });
 
   const { data, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['bug-reports', statusTab, severityFilter, typeFilter, search, page],
+    queryKey: ['bug-reports', statusTab, severityFilter, typeFilter, sourceFilter, search, page],
     queryFn: () =>
       getBugReports({
         status: statusTab === 'all' ? undefined : statusTab,
         severity: severityFilter === 'all' ? undefined : severityFilter,
         type: typeFilter === 'all' ? undefined : typeFilter,
+        source: sourceFilter === 'all' ? undefined : sourceFilter,
         search: search || undefined,
         page,
         per_page: 20,
@@ -277,7 +286,7 @@ const BugReports = () => {
                     Search
                   </Button>
                 </form>
-                <Select value={severityFilter} onValueChange={(v) => { setSeverityFilter(v); setPage(1); }}>
+                <Select value={severityFilter} onValueChange={(v) => { setSeverityFilter(v); setPage(1); setSelectedIds([]); }}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Severity" />
                   </SelectTrigger>
@@ -288,7 +297,7 @@ const BugReports = () => {
                     <SelectItem value="info">Info</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+                <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); setSelectedIds([]); }}>
                   <SelectTrigger className="w-[120px]">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
@@ -296,6 +305,25 @@ const BugReports = () => {
                     <SelectItem value="all">All types</SelectItem>
                     <SelectItem value="bug">Bug</SelectItem>
                     <SelectItem value="log">Log</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={sourceFilter}
+                  onValueChange={(v) => {
+                    setSourceFilter(v);
+                    setPage(1);
+                    setSelectedIds([]);
+                  }}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SOURCE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {selectedIds.length > 0 && (

@@ -1156,6 +1156,7 @@ export interface BugReportsFilters {
   status?: string;
   severity?: string;
   type?: string;
+  source?: string;
   search?: string;
   page?: number;
   per_page?: number;
@@ -1189,6 +1190,7 @@ export const getBugReports = async (
     if (filters.status) params.set('status', filters.status);
     if (filters.severity) params.set('severity', filters.severity);
     if (filters.type) params.set('type', filters.type);
+    if (filters.source) params.set('source', filters.source);
     if (filters.search) params.set('search', filters.search);
     if (filters.page) params.set('page', String(filters.page));
     if (filters.per_page) params.set('per_page', String(filters.per_page));
