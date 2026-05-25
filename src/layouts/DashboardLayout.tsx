@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   Package,
+  ReceiptText,
   Settings,
   ShieldCheck,
   User,
@@ -81,6 +82,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Orders",
       icon: <Package className="h-5 w-5" />,
       path: "/orders",
+    },
+    {
+      name: "Transactions",
+      icon: <ReceiptText className="h-5 w-5" />,
+      path: "/transactions",
     },
     {
       name: "Bugs & Logs",

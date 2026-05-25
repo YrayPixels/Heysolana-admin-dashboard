@@ -11,6 +11,7 @@ import UserDistribution from "./pages/UserDistribution";
 import Users from "./pages/Users";
 import ProfilePage from "./pages/ProfilePage";
 import Orders from "./pages/Orders";
+import Transactions from "./pages/Transactions";
 import JumiaOrderDetail from "./pages/JumiaOrderDetail";
 import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
@@ -114,6 +115,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Orders />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/transactions"
+        element={
+          <ProtectedRoute>
+            <Transactions />
           </ProtectedRoute>
         }
       />

@@ -187,6 +187,73 @@ export const getEngagementAnalytics = async (
   }
 };
 
+// ============ App Transactions / TVP ============
+
+export type TransactionMetricsCluster = "mainnet" | "devnet" | "all";
+export type TransactionMetricsDays = 7 | 30 | 90 | 365;
+
+export interface TransactionMetricsSummary {
+  tx_count: number;
+  total_input_usd: number;
+  total_output_usd: number;
+  total_fee_usd: number;
+}
+
+export interface TransactionMetricByType {
+  transaction_type: string;
+  count: number;
+  volume_usd: number;
+  fee_usd: number;
+}
+
+export interface TransactionMetricByDay {
+  date: string;
+  count: number;
+  volume_usd: number;
+  fee_usd: number;
+}
+
+export interface TransactionMetricByCluster {
+  cluster: "mainnet" | "devnet";
+  count: number;
+  volume_usd: number;
+}
+
+export interface TransactionMetrics {
+  available: boolean;
+  message?: string;
+  cluster: TransactionMetricsCluster;
+  days: number;
+  summary: TransactionMetricsSummary;
+  by_type: TransactionMetricByType[];
+  by_day: TransactionMetricByDay[];
+  by_cluster: TransactionMetricByCluster[];
+}
+
+export const getTransactionMetrics = async (
+  cluster: TransactionMetricsCluster = "mainnet",
+  days: TransactionMetricsDays = 30
+): Promise<TransactionMetrics | null> => {
+  try {
+    const params = new URLSearchParams({
+      cluster,
+      days: String(days),
+    });
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/app-transactions/metrics?${params.toString()}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch transaction metrics: ${response.statusText}`);
+    }
+
+    return (await response.json()) as TransactionMetrics;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 // Admin login - first step
 export const loginUser = async (email: string, password: string): Promise<{ needsVerification: boolean; admin?: UserProfile }> => {
   try {
