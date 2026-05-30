@@ -84,6 +84,18 @@ function normalizeMetrics(metrics: TransactionMetrics | null): TransactionMetric
       count: Number(row.count ?? 0),
       volume_usd: Number(row.volume_usd ?? 0),
     })),
+    by_app: (metrics.by_app ?? []).map((row) => ({
+      ...row,
+      count: Number(row.count ?? 0),
+      volume_usd: Number(row.volume_usd ?? 0),
+      fee_usd: Number(row.fee_usd ?? 0),
+    })),
+    by_provider: (metrics.by_provider ?? []).map((row) => ({
+      ...row,
+      count: Number(row.count ?? 0),
+      volume_usd: Number(row.volume_usd ?? 0),
+      fee_usd: Number(row.fee_usd ?? 0),
+    })),
   };
 }
 
@@ -120,6 +132,12 @@ const Transactions: React.FC = () => {
     )[0];
   }, [metrics?.by_type]);
 
+  const topApp = useMemo(() => {
+    return [...(metrics?.by_app ?? [])].sort(
+      (a, b) => b.volume_usd - a.volume_usd
+    )[0];
+  }, [metrics?.by_app]);
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -139,8 +157,8 @@ const Transactions: React.FC = () => {
               <AnimatedText gradient>Transactions & TVP</AnimatedText>
             </h1>
             <p className="text-gray-400">
-              Confirmed app-originated volume, fees, and transaction mix across
-              Solana clusters.
+              Confirmed app-originated volume, fees, and breakdowns by app,
+              provider, flow type, and cluster.
             </p>
           </div>
 
@@ -444,6 +462,159 @@ const Transactions: React.FC = () => {
                 </div>
               </div>
             </GlassCard>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <GlassCard>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-medium">Volume by App</h3>
+                    <p className="text-sm text-gray-500">
+                      TVP grouped by app_called across HeySolana products
+                    </p>
+                  </div>
+                  {topApp ? (
+                    <span className="text-xs text-gray-500">
+                      Top: {topApp.app_called}
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="h-72 mb-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={metrics.by_app}
+                      margin={{ top: 12, right: 16, left: 0, bottom: 4 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(255,255,255,0.1)"
+                      />
+                      <XAxis
+                        dataKey="app_called"
+                        stroke="#777"
+                        fontSize={11}
+                        interval={0}
+                        angle={-20}
+                        textAnchor="end"
+                        height={56}
+                      />
+                      <YAxis
+                        stroke="#777"
+                        fontSize={12}
+                        tickFormatter={(value) => `$${Number(value)}`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(0, 0, 0, 0.86)",
+                          borderColor: "rgba(255, 255, 255, 0.1)",
+                          borderRadius: "8px",
+                        }}
+                        formatter={(value, name) => [
+                          currency.format(Number(value)),
+                          name === "volume_usd" ? "TVP" : "Fees",
+                        ]}
+                      />
+                      <Bar
+                        dataKey="volume_usd"
+                        fill="#14F195"
+                        radius={[6, 6, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-left text-gray-400">
+                        <th className="py-3 pr-3 font-medium">App</th>
+                        <th className="py-3 pr-3 font-medium">Txns</th>
+                        <th className="py-3 pr-3 font-medium">TVP</th>
+                        <th className="py-3 pr-3 font-medium">Fees</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metrics.by_app.length === 0 ? (
+                        <tr>
+                          <td className="py-6 text-gray-400" colSpan={4}>
+                            No app volume recorded yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        metrics.by_app.map((row) => (
+                          <tr
+                            key={row.app_called}
+                            className="border-b border-white/5"
+                          >
+                            <td className="py-3 pr-3">{row.app_called}</td>
+                            <td className="py-3 pr-3 text-gray-300">
+                              {number.format(row.count)}
+                            </td>
+                            <td className="py-3 pr-3 text-emerald-300">
+                              {currency.format(row.volume_usd)}
+                            </td>
+                            <td className="py-3 pr-3 text-purple-300">
+                              {currency.format(row.fee_usd)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </GlassCard>
+
+              <GlassCard>
+                <div className="mb-4">
+                  <h3 className="text-lg font-medium">Volume by Provider</h3>
+                  <p className="text-sm text-gray-500">
+                    Underlying service or rail (Jupiter, Airbills, Pajcash, etc.)
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-left text-gray-400">
+                        <th className="py-3 pr-3 font-medium">Provider</th>
+                        <th className="py-3 pr-3 font-medium">Txns</th>
+                        <th className="py-3 pr-3 font-medium">TVP</th>
+                        <th className="py-3 pr-3 font-medium">Fees</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metrics.by_provider.length === 0 ? (
+                        <tr>
+                          <td className="py-6 text-gray-400" colSpan={4}>
+                            No provider volume recorded yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        metrics.by_provider.map((row) => (
+                          <tr
+                            key={row.provider}
+                            className="border-b border-white/5"
+                          >
+                            <td className="py-3 pr-3 capitalize">
+                              {row.provider}
+                            </td>
+                            <td className="py-3 pr-3 text-gray-300">
+                              {number.format(row.count)}
+                            </td>
+                            <td className="py-3 pr-3 text-emerald-300">
+                              {currency.format(row.volume_usd)}
+                            </td>
+                            <td className="py-3 pr-3 text-purple-300">
+                              {currency.format(row.fee_usd)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </GlassCard>
+            </div>
           </>
         )}
       </div>

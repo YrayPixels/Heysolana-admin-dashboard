@@ -219,6 +219,20 @@ export interface TransactionMetricByCluster {
   volume_usd: number;
 }
 
+export interface TransactionMetricByApp {
+  app_called: string;
+  count: number;
+  volume_usd: number;
+  fee_usd: number;
+}
+
+export interface TransactionMetricByProvider {
+  provider: string;
+  count: number;
+  volume_usd: number;
+  fee_usd: number;
+}
+
 export interface TransactionMetrics {
   available: boolean;
   message?: string;
@@ -228,6 +242,8 @@ export interface TransactionMetrics {
   by_type: TransactionMetricByType[];
   by_day: TransactionMetricByDay[];
   by_cluster: TransactionMetricByCluster[];
+  by_app: TransactionMetricByApp[];
+  by_provider: TransactionMetricByProvider[];
 }
 
 export const getTransactionMetrics = async (
