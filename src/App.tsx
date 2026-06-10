@@ -12,6 +12,7 @@ import Users from "./pages/Users";
 import ProfilePage from "./pages/ProfilePage";
 import Orders from "./pages/Orders";
 import Transactions from "./pages/Transactions";
+import TransactionList from "./pages/TransactionList";
 import JumiaOrderDetail from "./pages/JumiaOrderDetail";
 import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
@@ -124,6 +125,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Transactions />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/transaction-list"
+        element={
+          <ProtectedRoute>
+            <TransactionList />
           </ProtectedRoute>
         }
       />

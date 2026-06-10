@@ -246,6 +246,62 @@ export interface TransactionMetrics {
   by_provider: TransactionMetricByProvider[];
 }
 
+export type AppTransactionStatus = "pending" | "submitted" | "confirmed" | "failed";
+
+export interface AppTransaction {
+  id: number;
+  client_reference: string | null;
+  signature: string | null;
+  cluster: "mainnet" | "devnet";
+  wallet_address: string;
+  username: string | null;
+  mobile_number: string | null;
+  transaction_type: string;
+  status: AppTransactionStatus | string;
+  provider: string | null;
+  amount: string | number | null;
+  token: string | null;
+  input_token_mint: string | null;
+  input_token_symbol: string | null;
+  input_amount: string | number | null;
+  input_amount_usd: string | number | null;
+  output_token_mint: string | null;
+  output_token_symbol: string | null;
+  output_amount: string | number | null;
+  output_amount_usd: string | number | null;
+  platform_fee_amount: string | number | null;
+  platform_fee_token: string | null;
+  platform_fee_usd: string | number | null;
+  network_fee_lamports: number | null;
+  recipient_address: string | null;
+  app_called: string | null;
+  raw_metadata: Record<string, unknown> | null;
+  confirmed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AppTransactionsFilters {
+  cluster?: TransactionMetricsCluster;
+  status?: string;
+  transaction_type?: string;
+  provider?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}
+
+export interface AppTransactionsResponse {
+  success: boolean;
+  data: AppTransaction[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
 export const getTransactionMetrics = async (
   cluster: TransactionMetricsCluster = "mainnet",
   days: TransactionMetricsDays = 30
@@ -264,6 +320,34 @@ export const getTransactionMetrics = async (
     }
 
     return (await response.json()) as TransactionMetrics;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getAppTransactions = async (
+  filters: AppTransactionsFilters = {}
+): Promise<AppTransactionsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.cluster) params.set("cluster", filters.cluster);
+    if (filters.status) params.set("status", filters.status);
+    if (filters.transaction_type) params.set("transaction_type", filters.transaction_type);
+    if (filters.provider) params.set("provider", filters.provider);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/app-transactions${params.toString() ? `?${params.toString()}` : ""}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch transactions: ${response.statusText}`);
+    }
+
+    return (await response.json()) as AppTransactionsResponse;
   } catch (error) {
     handleError(error);
     return null;

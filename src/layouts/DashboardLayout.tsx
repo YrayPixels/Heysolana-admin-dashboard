@@ -84,9 +84,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       path: "/orders",
     },
     {
-      name: "Transactions",
-      icon: <ReceiptText className="h-5 w-5" />,
+      name: "Transaction Analysis",
+      icon: <TrendingUp className="h-5 w-5" />,
       path: "/transactions",
+    },
+    {
+      name: "Transaction List",
+      icon: <ReceiptText className="h-5 w-5" />,
+      path: "/transaction-list",
     },
     {
       name: "Bugs & Logs",
