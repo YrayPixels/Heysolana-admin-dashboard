@@ -1275,6 +1275,13 @@ export interface NotificationNudge {
   priority: number;
   starts_at: string | null;
   ends_at: string | null;
+  stats?: {
+    shown: number;
+    unique_viewers: number;
+    dismissed: number;
+    cta_clicks: number;
+    cta_rate: number;
+  };
   created_at: string | null;
   updated_at: string | null;
 }
@@ -1360,6 +1367,24 @@ export const createNotificationNudge = async (
     }
     toast.success("Notification nudge created");
     return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getNotificationNudge = async (
+  id: number
+): Promise<{ success: boolean; data: NotificationNudge } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/notification-nudges/${id}`);
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getNotificationNudgeErrorMessage(json, `Failed to fetch nudge: ${response.statusText}`)
+      );
+    }
+    return json;
   } catch (error) {
     handleError(error);
     return null;
