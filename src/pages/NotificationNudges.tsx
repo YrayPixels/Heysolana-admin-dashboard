@@ -29,6 +29,7 @@ import {
   NotificationNudgePayload,
   updateNotificationNudge,
 } from "@/services/api";
+import { toast } from "sonner";
 
 type ActionType = "route" | "external";
 
@@ -63,6 +64,22 @@ const emptyForm: FormState = {
 const valueOrNull = (value: string) => {
   const trimmed = value.trim();
   return trimmed === "" ? null : trimmed;
+};
+
+const dateValueOrNull = (value: string) => {
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  const date = new Date(trimmed);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
+const isValidUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 };
 
 const toInputDate = (value: string | null) => {
@@ -208,12 +225,41 @@ const NotificationNudges = () => {
     action_type: form.cta_label.trim() ? form.action_type : null,
     action_value: form.cta_label.trim() ? valueOrNull(form.action_value) : null,
     priority: Number(form.priority || 0),
-    starts_at: valueOrNull(form.starts_at),
-    ends_at: valueOrNull(form.ends_at),
+    starts_at: dateValueOrNull(form.starts_at),
+    ends_at: dateValueOrNull(form.ends_at),
   });
 
   const handleSave = async () => {
     if (!form.headline.trim()) return;
+    if (form.image_url.trim() && !isValidUrl(form.image_url.trim())) {
+      toast.error("Image URL must start with http:// or https://");
+      return;
+    }
+    if (form.cta_label.trim() && !form.action_value.trim()) {
+      toast.error("Add an action value for the CTA, or remove the CTA label");
+      return;
+    }
+    if (
+      form.cta_label.trim() &&
+      form.action_type === "external" &&
+      !isValidUrl(form.action_value.trim())
+    ) {
+      toast.error("External CTA action must be a valid http:// or https:// URL");
+      return;
+    }
+    if (
+      form.cta_label.trim() &&
+      form.action_type === "route" &&
+      !form.action_value.trim().startsWith("/")
+    ) {
+      toast.error("App route CTA action should start with /");
+      return;
+    }
+    if (form.starts_at && form.ends_at && new Date(form.ends_at) < new Date(form.starts_at)) {
+      toast.error("Ends at must be after Starts at");
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = buildPayload();

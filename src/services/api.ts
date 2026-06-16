@@ -1305,6 +1305,16 @@ export interface NotificationNudgesResponse {
   };
 }
 
+const getNotificationNudgeErrorMessage = (
+  json: { message?: string; errors?: Record<string, string[]> },
+  fallback: string
+) => {
+  const firstValidationError = json.errors
+    ? Object.values(json.errors).flat().find(Boolean)
+    : null;
+  return firstValidationError || json.message || fallback;
+};
+
 export const getNotificationNudges = async (
   filters: { search?: string; active?: boolean; page?: number; per_page?: number } = {}
 ): Promise<NotificationNudgesResponse | null> => {
@@ -1318,8 +1328,16 @@ export const getNotificationNudges = async (
     const response = await authenticatedFetch(
       `${API_BASE_URL}/admin/notification-nudges${params.toString() ? `?${params.toString()}` : ""}`
     );
-    if (!response.ok) throw new Error(`Failed to fetch notification nudges: ${response.statusText}`);
-    return await response.json();
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getNotificationNudgeErrorMessage(
+          json,
+          `Failed to fetch notification nudges: ${response.statusText}`
+        )
+      );
+    }
+    return json;
   } catch (error) {
     handleError(error);
     return null;
@@ -1335,7 +1353,11 @@ export const createNotificationNudge = async (
       body: JSON.stringify(payload),
     });
     const json = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(json.message || `Failed to create nudge: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(
+        getNotificationNudgeErrorMessage(json, `Failed to create nudge: ${response.statusText}`)
+      );
+    }
     toast.success("Notification nudge created");
     return json.data ?? null;
   } catch (error) {
@@ -1354,7 +1376,11 @@ export const updateNotificationNudge = async (
       body: JSON.stringify(payload),
     });
     const json = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(json.message || `Failed to update nudge: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(
+        getNotificationNudgeErrorMessage(json, `Failed to update nudge: ${response.statusText}`)
+      );
+    }
     toast.success("Notification nudge updated");
     return json.data ?? null;
   } catch (error) {
@@ -1369,7 +1395,11 @@ export const deleteNotificationNudge = async (id: number): Promise<boolean> => {
       method: "DELETE",
     });
     const json = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(json.message || `Failed to delete nudge: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(
+        getNotificationNudgeErrorMessage(json, `Failed to delete nudge: ${response.statusText}`)
+      );
+    }
     toast.success("Notification nudge deleted");
     return true;
   } catch (error) {
