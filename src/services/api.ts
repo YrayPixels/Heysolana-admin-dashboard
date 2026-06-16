@@ -639,6 +639,9 @@ export interface User {
   wallet_address: string;
   pin: string;
   verification_status?: string;
+  last_active_at?: string | null;
+  last_active_days?: number | null;
+  active_device_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -658,6 +661,7 @@ export interface UsersFilters {
   search?: string;
   status?: string;
   wallet_status?: string;
+  inactive_days?: number;
   page?: number;
   per_page?: number;
   sort_field?: string;
@@ -711,6 +715,14 @@ export const getUsers = async (filters: UsersFilters = {}): Promise<UsersRespons
       } else if (filters.wallet_status === 'no_wallet') {
         users = users.filter(user => !user.wallet_address || user.wallet_address === '');
       }
+    }
+
+    if (filters.inactive_days) {
+      users = users.filter(user =>
+        (user.active_device_count ?? 0) > 0 &&
+        typeof user.last_active_days === 'number' &&
+        user.last_active_days >= filters.inactive_days!
+      );
     }
     
     // Apply sorting
@@ -1134,6 +1146,7 @@ export interface PushRecipient {
   is_active: boolean;
   push_token_preview: string;
   last_used_at: string | null;
+  last_active_days: number | null;
   updated_at: string | null;
 }
 
@@ -1142,6 +1155,7 @@ export interface PushRecipientsFilters {
   device_type?: "ios" | "android" | "all";
   phone_number?: string;
   active_only?: boolean;
+  inactive_days?: number;
   page?: number;
   per_page?: number;
 }
@@ -1174,6 +1188,7 @@ export interface AdminSendPushPayload {
   phone_numbers?: string[];
   token_ids?: number[];
   active_only?: boolean;
+  inactive_days?: number;
   data?: Record<string, unknown>;
 }
 
@@ -1188,6 +1203,7 @@ export const getPushRecipients = async (
     }
     if (filters.phone_number) params.set("phone_number", filters.phone_number);
     if (filters.active_only === false) params.set("active_only", "0");
+    if (filters.inactive_days) params.set("inactive_days", String(filters.inactive_days));
     if (filters.page) params.set("page", String(filters.page));
     if (filters.per_page) params.set("per_page", String(filters.per_page));
 
