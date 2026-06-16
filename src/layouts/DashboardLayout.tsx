@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  Megaphone,
   Package,
   ReceiptText,
   Settings,
@@ -78,6 +79,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Push notifications",
       icon: <Bell className="h-5 w-5" />,
       path: "/push-notifications",
+    },
+    {
+      name: "Notification nudges",
+      icon: <Megaphone className="h-5 w-5" />,
+      path: "/notification-nudges",
     },
     {
       name: "WhatsApp messaging",

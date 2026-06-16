@@ -18,6 +18,7 @@ import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
 import Admins from "./pages/Admins";
 import PushNotifications from "./pages/PushNotifications";
+import NotificationNudges from "./pages/NotificationNudges";
 import WhatsAppMessaging from "./pages/WhatsAppMessaging";
 import BugReports from "./pages/BugReports";
 import BugReportDetail from "./pages/BugReportDetail";
@@ -180,6 +181,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <PushNotifications />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/notification-nudges"
+        element={
+          <ProtectedRoute>
+            <NotificationNudges />
           </ProtectedRoute>
         }
       />

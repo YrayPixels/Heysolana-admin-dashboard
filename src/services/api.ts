@@ -1256,6 +1256,128 @@ export const sendAdminPush = async (
   }
 };
 
+// ============ Notification Nudges (Admin) ============
+
+export type NotificationNudgeAction =
+  | { type: "route"; path: string }
+  | { type: "external"; url: string };
+
+export interface NotificationNudge {
+  id: number;
+  campaign_key: string;
+  enabled: boolean;
+  headline: string;
+  highlight: string | null;
+  body: string | null;
+  image: string | null;
+  ctaLabel: string | null;
+  action: NotificationNudgeAction | null;
+  priority: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface NotificationNudgePayload {
+  campaign_key?: string;
+  is_active: boolean;
+  headline: string;
+  highlight?: string | null;
+  body?: string | null;
+  image_url?: string | null;
+  cta_label?: string | null;
+  action_type?: "route" | "external" | null;
+  action_value?: string | null;
+  priority?: number;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
+export interface NotificationNudgesResponse {
+  success: boolean;
+  data: NotificationNudge[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+export const getNotificationNudges = async (
+  filters: { search?: string; active?: boolean; page?: number; per_page?: number } = {}
+): Promise<NotificationNudgesResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.search) params.set("search", filters.search);
+    if (typeof filters.active === "boolean") params.set("active", filters.active ? "1" : "0");
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/notification-nudges${params.toString() ? `?${params.toString()}` : ""}`
+    );
+    if (!response.ok) throw new Error(`Failed to fetch notification nudges: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const createNotificationNudge = async (
+  payload: NotificationNudgePayload
+): Promise<NotificationNudge | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/notification-nudges`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.message || `Failed to create nudge: ${response.statusText}`);
+    toast.success("Notification nudge created");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateNotificationNudge = async (
+  id: number,
+  payload: NotificationNudgePayload
+): Promise<NotificationNudge | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/notification-nudges/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.message || `Failed to update nudge: ${response.statusText}`);
+    toast.success("Notification nudge updated");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deleteNotificationNudge = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/notification-nudges/${id}`, {
+      method: "DELETE",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.message || `Failed to delete nudge: ${response.statusText}`);
+    toast.success("Notification nudge deleted");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
 // ============ WhatsApp messages (Admin) ============
 
 export type WhatsAppTargetMode = "all" | "filtered" | "selected";
