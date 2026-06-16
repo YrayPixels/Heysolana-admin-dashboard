@@ -8,6 +8,7 @@ import {
   ChevronLast,
   LogOut,
   Menu,
+  MessageCircle,
   Package,
   ReceiptText,
   Settings,
@@ -77,6 +78,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Push notifications",
       icon: <Bell className="h-5 w-5" />,
       path: "/push-notifications",
+    },
+    {
+      name: "WhatsApp messaging",
+      icon: <MessageCircle className="h-5 w-5" />,
+      path: "/whatsapp-messaging",
     },
     {
       name: "Orders",

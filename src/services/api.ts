@@ -1256,6 +1256,56 @@ export const sendAdminPush = async (
   }
 };
 
+// ============ WhatsApp messages (Admin) ============
+
+export type WhatsAppTargetMode = "all" | "filtered" | "selected";
+export type WhatsAppMessageMode = "template" | "custom";
+
+export interface AdminSendWhatsAppPayload {
+  target: WhatsAppTargetMode;
+  message_mode: WhatsAppMessageMode;
+  header?: string;
+  body?: string;
+  app_link?: string;
+  template_name?: string;
+  template_language?: string;
+  search?: string;
+  user_ids?: number[];
+  phone_numbers?: string[];
+}
+
+export interface AdminSendWhatsAppResponse {
+  campaign_id?: number;
+  queued_count: number;
+  recipient_count?: number;
+}
+
+export const sendAdminWhatsApp = async (
+  payload: AdminSendWhatsAppPayload
+): Promise<AdminSendWhatsAppResponse | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/whatsapp/messages`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(json.message || `Queue failed: ${response.statusText}`);
+    }
+
+    const queuedCount = json.queued_count ?? json.recipient_count ?? 0;
+    toast.success(`Queued ${queuedCount} WhatsApp message(s)`);
+    return {
+      campaign_id: json.campaign_id,
+      queued_count: queuedCount,
+      recipient_count: json.recipient_count,
+    };
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 export const updateProcessingFeeSettings = async (
   payload: Partial<{
     processing_fee_percent: number;

@@ -18,6 +18,7 @@ import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
 import Admins from "./pages/Admins";
 import PushNotifications from "./pages/PushNotifications";
+import WhatsAppMessaging from "./pages/WhatsAppMessaging";
 import BugReports from "./pages/BugReports";
 import BugReportDetail from "./pages/BugReportDetail";
 import NotFound from "./pages/NotFound";
@@ -179,6 +180,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <PushNotifications />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/whatsapp-messaging"
+        element={
+          <ProtectedRoute>
+            <WhatsAppMessaging />
           </ProtectedRoute>
         }
       />
