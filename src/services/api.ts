@@ -1123,6 +1123,16 @@ export interface ProcessingFeeSettings {
   jupiter_referral_fee_bps: string;
   /** Email address to notify when new bug reports arrive */
   bug_report_email: string;
+  /** Master switch for Hey Points (cashback earn + redeem in wallet). */
+  hey_points_enabled: string;
+  airtime_cashback_enabled: string;
+  airtime_cashback_percent: string;
+  airtime_cashback_min_purchase_ngn: string;
+  airtime_cashback_max_points_per_txn: string;
+  points_redeem_airtime_enabled: string;
+  points_redeem_gas_enabled: string;
+  points_max_redeem_percent_airtime: string;
+  points_lamports_per_point: string;
 }
 
 export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings | null> => {
@@ -1451,6 +1461,238 @@ export const deleteNotificationNudge = async (id: number): Promise<boolean> => {
   }
 };
 
+// ============ Scheduled push campaigns (Admin) ============
+
+export type ScheduledPushScheduleType = "daily" | "weekly" | "interval";
+export type ScheduledPushTarget = "all" | "filtered" | "inactive";
+
+export interface ScheduledPushCampaign {
+  id: number;
+  name: string;
+  campaign_key: string;
+  is_active: boolean;
+  title: string;
+  body: string;
+  link: string | null;
+  schedule_type: ScheduledPushScheduleType;
+  schedule_time: string | null;
+  schedule_day: number | null;
+  interval_minutes: number | null;
+  target: ScheduledPushTarget;
+  device_type: "ios" | "android" | null;
+  inactive_days: number | null;
+  search: string | null;
+  cooldown_hours: number;
+  max_recipients_per_run: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  stats?: {
+    total_sends: number;
+    unique_users: number;
+    total_devices: number;
+    last_sent_at: string | null;
+  };
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ScheduledPushCampaignPayload {
+  name: string;
+  campaign_key?: string;
+  is_active: boolean;
+  title: string;
+  body: string;
+  link?: string | null;
+  schedule_type: ScheduledPushScheduleType;
+  schedule_time?: string | null;
+  schedule_day?: number | null;
+  interval_minutes?: number | null;
+  target: ScheduledPushTarget;
+  device_type?: "ios" | "android" | null;
+  inactive_days?: number | null;
+  search?: string | null;
+  cooldown_hours?: number;
+  max_recipients_per_run?: number;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
+export interface ScheduledPushCampaignsResponse {
+  success: boolean;
+  data: ScheduledPushCampaign[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+const getScheduledPushErrorMessage = (
+  json: { message?: string; errors?: Record<string, string[]> },
+  fallback: string
+) => {
+  const firstValidationError = json.errors
+    ? Object.values(json.errors).flat().find(Boolean)
+    : null;
+  return firstValidationError || json.message || fallback;
+};
+
+export const getScheduledPushCampaigns = async (
+  filters: { search?: string; active?: boolean; page?: number; per_page?: number } = {}
+): Promise<ScheduledPushCampaignsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.search) params.set("search", filters.search);
+    if (typeof filters.active === "boolean") params.set("active", filters.active ? "1" : "0");
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/scheduled-pushes${params.toString() ? `?${params.toString()}` : ""}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getScheduledPushErrorMessage(json, `Failed to fetch scheduled pushes: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const createScheduledPushCampaign = async (
+  payload: ScheduledPushCampaignPayload
+): Promise<ScheduledPushCampaign | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/scheduled-pushes`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getScheduledPushErrorMessage(json, `Failed to create campaign: ${response.statusText}`)
+      );
+    }
+    toast.success("Scheduled push campaign created");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getScheduledPushCampaign = async (
+  id: number
+): Promise<{ success: boolean; data: ScheduledPushCampaign } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/scheduled-pushes/${id}`);
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getScheduledPushErrorMessage(json, `Failed to fetch campaign: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateScheduledPushCampaign = async (
+  id: number,
+  payload: Partial<ScheduledPushCampaignPayload>
+): Promise<ScheduledPushCampaign | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/scheduled-pushes/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getScheduledPushErrorMessage(json, `Failed to update campaign: ${response.statusText}`)
+      );
+    }
+    toast.success("Scheduled push campaign updated");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deleteScheduledPushCampaign = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/scheduled-pushes/${id}`, {
+      method: "DELETE",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getScheduledPushErrorMessage(json, `Failed to delete campaign: ${response.statusText}`)
+      );
+    }
+    toast.success("Scheduled push campaign deleted");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
+export const previewScheduledPushCampaign = async (
+  id: number
+): Promise<PushPreviewResponse | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/scheduled-pushes/${id}/preview`, {
+      method: "POST",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getScheduledPushErrorMessage(json, `Failed to preview campaign: ${response.statusText}`)
+      );
+    }
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const runScheduledPushCampaignNow = async (
+  id: number,
+  ignoreCooldown = false
+): Promise<{ users: number; devices: number; skipped_cooldown: number } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/scheduled-pushes/${id}/run-now`, {
+      method: "POST",
+      body: JSON.stringify({ ignore_cooldown: ignoreCooldown }),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getScheduledPushErrorMessage(json, `Failed to run campaign: ${response.statusText}`)
+      );
+    }
+    const users = json.data?.users ?? 0;
+    const devices = json.data?.devices ?? 0;
+    toast.success(`Sent to ${users} user(s), ${devices} device(s)`);
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 // ============ WhatsApp messages (Admin) ============
 
 export type WhatsAppTargetMode = "all" | "filtered" | "selected";
@@ -1512,6 +1754,15 @@ export const updateProcessingFeeSettings = async (
     jupiter_referral_account: string;
     jupiter_referral_fee_bps: number;
     bug_report_email: string;
+    hey_points_enabled?: '0' | '1';
+    airtime_cashback_enabled?: '0' | '1';
+    airtime_cashback_percent?: number;
+    airtime_cashback_min_purchase_ngn?: number;
+    airtime_cashback_max_points_per_txn?: number;
+    points_redeem_airtime_enabled?: '0' | '1';
+    points_redeem_gas_enabled?: '0' | '1';
+    points_max_redeem_percent_airtime?: number;
+    points_lamports_per_point?: number;
   }>
 ): Promise<ProcessingFeeSettings | null> => {
   try {

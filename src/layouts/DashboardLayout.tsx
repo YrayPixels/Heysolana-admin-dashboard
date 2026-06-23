@@ -4,6 +4,7 @@ import {
   BarChart3,
   Bell,
   Bug,
+  CalendarClock,
   ChevronFirst,
   ChevronLast,
   LogOut,
@@ -79,6 +80,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Push notifications",
       icon: <Bell className="h-5 w-5" />,
       path: "/push-notifications",
+    },
+    {
+      name: "Scheduled pushes",
+      icon: <CalendarClock className="h-5 w-5" />,
+      path: "/scheduled-pushes",
     },
     {
       name: "Notification nudges",

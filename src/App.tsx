@@ -18,6 +18,8 @@ import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
 import Admins from "./pages/Admins";
 import PushNotifications from "./pages/PushNotifications";
+import ScheduledPushes from "./pages/ScheduledPushes";
+import ScheduledPushDetail from "./pages/ScheduledPushDetail";
 import NotificationNudges from "./pages/NotificationNudges";
 import NotificationNudgeDetail from "./pages/NotificationNudgeDetail";
 import WhatsAppMessaging from "./pages/WhatsAppMessaging";
@@ -182,6 +184,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <PushNotifications />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/scheduled-pushes"
+        element={
+          <ProtectedRoute>
+            <ScheduledPushes />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/scheduled-pushes/:id"
+        element={
+          <ProtectedRoute>
+            <ScheduledPushDetail />
           </ProtectedRoute>
         }
       />

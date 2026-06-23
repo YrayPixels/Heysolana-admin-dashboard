@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Percent, Wallet, Truck, ArrowLeftRight } from 'lucide-react';
+import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import {
   getProcessingFeeSettings,
@@ -22,7 +23,12 @@ const Settings = () => {
   const [deliveryFeeCrossmintUsd, setDeliveryFeeCrossmintUsd] = useState('');
   const [jupiterReferralAccount, setJupiterReferralAccount] = useState('');
   const [jupiterReferralFeeBps, setJupiterReferralFeeBps] = useState('');
+  const [heyPointsEnabled, setHeyPointsEnabled] = useState(true);
+  const [cashbackPercent, setCashbackPercent] = useState('');
+  const [cashbackMinNgn, setCashbackMinNgn] = useState('');
+  const [cashbackMaxPoints, setCashbackMaxPoints] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingHeyPoints, setSavingHeyPoints] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['processing-fee-settings'],
@@ -39,6 +45,10 @@ const Settings = () => {
       setDeliveryFeeCrossmintUsd(settings.delivery_fee_crossmint_usd ?? '');
       setJupiterReferralAccount(settings.jupiter_referral_account ?? '');
       setJupiterReferralFeeBps(settings.jupiter_referral_fee_bps ?? '');
+      setHeyPointsEnabled((settings.hey_points_enabled ?? '1') === '1');
+      setCashbackPercent(settings.airtime_cashback_percent ?? '');
+      setCashbackMinNgn(settings.airtime_cashback_min_purchase_ngn ?? '');
+      setCashbackMaxPoints(settings.airtime_cashback_max_points_per_txn ?? '');
     }
   }, [settings]);
 
@@ -60,6 +70,39 @@ const Settings = () => {
     }
   };
 
+  const handleHeyPointsToggle = async (enabled: boolean) => {
+    setHeyPointsEnabled(enabled);
+    setSavingHeyPoints(true);
+    const result = await updateProcessingFeeSettings({
+      hey_points_enabled: enabled ? '1' : '0',
+      airtime_cashback_enabled: enabled ? '1' : '0',
+    });
+    setSavingHeyPoints(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+    } else {
+      setHeyPointsEnabled(!enabled);
+    }
+  };
+
+  const handleSaveHeyPoints = async () => {
+    setSavingHeyPoints(true);
+    const result = await updateProcessingFeeSettings({
+      hey_points_enabled: heyPointsEnabled ? '1' : '0',
+      airtime_cashback_enabled: heyPointsEnabled ? '1' : '0',
+      airtime_cashback_percent:
+        cashbackPercent === '' ? undefined : Number(cashbackPercent),
+      airtime_cashback_min_purchase_ngn:
+        cashbackMinNgn === '' ? undefined : Number(cashbackMinNgn),
+      airtime_cashback_max_points_per_txn:
+        cashbackMaxPoints === '' ? undefined : Number(cashbackMaxPoints),
+    });
+    setSavingHeyPoints(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6 p-4 md:p-6">
@@ -69,6 +112,98 @@ const Settings = () => {
             Configure processing fees and the single treasury wallet used for all fees and payments (Jumia USDC, Crossmint, etc.)
           </p>
         </div>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5" />
+              Hey Points cashback
+            </CardTitle>
+            <CardDescription>
+              Reward users with Hey Points on airtime and data purchases. Points can be redeemed for airtime or gas fees in the wallet app. Turn off to disable earning and redemption app-wide.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-10 w-full max-w-md" />
+              </div>
+            ) : (
+              <div className="grid gap-6 max-w-md">
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="hey-points-enabled">Enable Hey Points</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {heyPointsEnabled
+                        ? 'Users earn and redeem points on airtime & data.'
+                        : 'Cashback is off — wallet hides points features.'}
+                    </p>
+                  </div>
+                  <Switch
+                    id="hey-points-enabled"
+                    checked={heyPointsEnabled}
+                    disabled={savingHeyPoints}
+                    onCheckedChange={handleHeyPointsToggle}
+                  />
+                </div>
+
+                {heyPointsEnabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="cashback-percent">Cashback percent (%)</Label>
+                      <Input
+                        id="cashback-percent"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        placeholder="10"
+                        value={cashbackPercent}
+                        onChange={(e) => setCashbackPercent(e.target.value)}
+                        className="bg-white/5 border-white/10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cashback-min">Minimum purchase (NGN) to earn</Label>
+                      <Input
+                        id="cashback-min"
+                        type="number"
+                        min={0}
+                        step={1}
+                        placeholder="50"
+                        value={cashbackMinNgn}
+                        onChange={(e) => setCashbackMinNgn(e.target.value)}
+                        className="bg-white/5 border-white/10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cashback-max">Max points earned per purchase</Label>
+                      <Input
+                        id="cashback-max"
+                        type="number"
+                        min={0}
+                        step={1}
+                        placeholder="500"
+                        value={cashbackMaxPoints}
+                        onChange={(e) => setCashbackMaxPoints(e.target.value)}
+                        className="bg-white/5 border-white/10"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleSaveHeyPoints}
+                      disabled={savingHeyPoints}
+                      className="w-fit"
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      {savingHeyPoints ? 'Saving...' : 'Save Hey Points settings'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="bg-black/30 border-white/10">
           <CardHeader>
