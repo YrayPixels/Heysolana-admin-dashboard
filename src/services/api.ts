@@ -1133,6 +1133,8 @@ export interface ProcessingFeeSettings {
   points_redeem_gas_enabled: string;
   points_max_redeem_percent_airtime: string;
   points_lamports_per_point: string;
+  /** When on, points redemption uses backend-signed treasury Airbills checkout. */
+  hey_points_treasury_enabled: string;
 }
 
 export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings | null> => {
@@ -1763,6 +1765,7 @@ export const updateProcessingFeeSettings = async (
     points_redeem_gas_enabled?: '0' | '1';
     points_max_redeem_percent_airtime?: number;
     points_lamports_per_point?: number;
+    hey_points_treasury_enabled?: '0' | '1';
   }>
 ): Promise<ProcessingFeeSettings | null> => {
   try {

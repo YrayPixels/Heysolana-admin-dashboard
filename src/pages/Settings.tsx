@@ -27,6 +27,7 @@ const Settings = () => {
   const [cashbackPercent, setCashbackPercent] = useState('');
   const [cashbackMinNgn, setCashbackMinNgn] = useState('');
   const [cashbackMaxPoints, setCashbackMaxPoints] = useState('');
+  const [heyPointsTreasuryEnabled, setHeyPointsTreasuryEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingHeyPoints, setSavingHeyPoints] = useState(false);
 
@@ -49,6 +50,7 @@ const Settings = () => {
       setCashbackPercent(settings.airtime_cashback_percent ?? '');
       setCashbackMinNgn(settings.airtime_cashback_min_purchase_ngn ?? '');
       setCashbackMaxPoints(settings.airtime_cashback_max_points_per_txn ?? '');
+      setHeyPointsTreasuryEnabled((settings.hey_points_treasury_enabled ?? '1') === '1');
     }
   }, [settings]);
 
@@ -85,6 +87,20 @@ const Settings = () => {
     }
   };
 
+  const handleHeyPointsTreasuryToggle = async (enabled: boolean) => {
+    setHeyPointsTreasuryEnabled(enabled);
+    setSavingHeyPoints(true);
+    const result = await updateProcessingFeeSettings({
+      hey_points_treasury_enabled: enabled ? '1' : '0',
+    });
+    setSavingHeyPoints(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+    } else {
+      setHeyPointsTreasuryEnabled(!enabled);
+    }
+  };
+
   const handleSaveHeyPoints = async () => {
     setSavingHeyPoints(true);
     const result = await updateProcessingFeeSettings({
@@ -96,6 +112,7 @@ const Settings = () => {
         cashbackMinNgn === '' ? undefined : Number(cashbackMinNgn),
       airtime_cashback_max_points_per_txn:
         cashbackMaxPoints === '' ? undefined : Number(cashbackMaxPoints),
+      hey_points_treasury_enabled: heyPointsTreasuryEnabled ? '1' : '0',
     });
     setSavingHeyPoints(false);
     if (result) {
@@ -190,6 +207,24 @@ const Settings = () => {
                         className="bg-white/5 border-white/10"
                       />
                     </div>
+
+                    <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="hey-points-treasury">Treasury airtime checkout</Label>
+                        <p className="text-xs text-muted-foreground">
+                          {heyPointsTreasuryEnabled
+                            ? 'Points cover full face-value airtime. Backend signs Airbills txs with the treasury wallet (requires TREASURY_SECRET_KEY on server).'
+                            : 'Off — points only reduce the NGN sent to Airbills (user gets less airtime).'}
+                        </p>
+                      </div>
+                      <Switch
+                        id="hey-points-treasury"
+                        checked={heyPointsTreasuryEnabled}
+                        disabled={savingHeyPoints}
+                        onCheckedChange={handleHeyPointsTreasuryToggle}
+                      />
+                    </div>
+
                     <Button
                       onClick={handleSaveHeyPoints}
                       disabled={savingHeyPoints}
@@ -212,7 +247,7 @@ const Settings = () => {
               Treasury wallet
             </CardTitle>
             <CardDescription>
-              Solana wallet address that receives all fee and payment flows (USDC for Jumia orders, etc.). The wallet app fetches this to send payments.
+              Solana wallet address that receives fee and payment flows (USDC for Jumia orders, etc.). For Hey Points airtime checkout, set TREASURY_SECRET_KEY in server env to the base58 secret for this address.
             </CardDescription>
           </CardHeader>
           <CardContent>
