@@ -1121,6 +1121,8 @@ export interface ProcessingFeeSettings {
   jupiter_referral_account: string;
   /** Basis points (50–255). Use 0 to disable Hey Solana swap fee. */
   jupiter_referral_fee_bps: string;
+  /** Email address to notify when new bug reports arrive */
+  bug_report_email: string;
 }
 
 export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings | null> => {
@@ -1509,6 +1511,7 @@ export const updateProcessingFeeSettings = async (
     delivery_fee_crossmint_usd: number;
     jupiter_referral_account: string;
     jupiter_referral_fee_bps: number;
+    bug_report_email: string;
   }>
 ): Promise<ProcessingFeeSettings | null> => {
   try {

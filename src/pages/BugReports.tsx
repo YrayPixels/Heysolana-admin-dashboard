@@ -6,13 +6,16 @@ import {
   Bug,
   ChevronLeft,
   ChevronRight,
+  Mail,
   RefreshCw,
+  Save,
   Search,
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -38,6 +41,8 @@ import {
   clearBugReports,
   getBugReports,
   getBugReportStats,
+  getProcessingFeeSettings,
+  updateProcessingFeeSettings,
 } from '@/services/api';
 
 const STATUS_TABS: { value: string; label: string }[] = [
@@ -99,6 +104,30 @@ const BugReports = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [clearDialog, setClearDialog] = useState<'fixed' | 'all' | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [notificationEmail, setNotificationEmail] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  const { data: notificationSettings } = useQuery({
+    queryKey: ['processing-fee-settings'],
+    queryFn: getProcessingFeeSettings,
+  });
+
+  React.useEffect(() => {
+    if (notificationSettings) {
+      setNotificationEmail(notificationSettings.bug_report_email ?? '');
+    }
+  }, [notificationSettings]);
+
+  const handleSaveNotificationEmail = async () => {
+    setSavingEmail(true);
+    const result = await updateProcessingFeeSettings({
+      bug_report_email: notificationEmail.trim(),
+    });
+    setSavingEmail(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+    }
+  };
 
   const { data: stats } = useQuery({
     queryKey: ['bug-report-stats'],
@@ -202,6 +231,37 @@ const BugReports = () => {
             </Button>
           </div>
         </div>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Mail className="h-5 w-5" />
+              Notification email
+            </CardTitle>
+            <CardDescription>
+              New bug reports from the wallet and backend are emailed to this address. Leave blank to disable notifications.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end max-w-xl">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="bug-report-email">Admin email</Label>
+                <Input
+                  id="bug-report-email"
+                  type="email"
+                  placeholder="e.g. bugs@heysolana.com"
+                  value={notificationEmail}
+                  onChange={(e) => setNotificationEmail(e.target.value)}
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+              <Button onClick={handleSaveNotificationEmail} disabled={savingEmail} className="w-fit shrink-0">
+                <Save className="mr-2 h-4 w-4" />
+                {savingEmail ? 'Saving...' : 'Save email'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Card>
