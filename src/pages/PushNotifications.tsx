@@ -23,12 +23,15 @@ import {
   getPushCampaigns,
   PushCampaign,
   PushCampaignPayload,
+  sendPushCampaign,
+  updatePushCampaign,
 } from "@/services/api";
 
 const PushNotifications = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [composeOpen, setComposeOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<PushCampaign | null>(null);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -40,9 +43,37 @@ const PushNotifications = () => {
   const campaigns = campaignsData?.data ?? [];
   const latestSent = campaigns.find((c) => c.sent) ?? null;
 
+  const handleComposeOpenChange = (open: boolean) => {
+    setComposeOpen(open);
+    if (!open) {
+      setEditingCampaign(null);
+    }
+  };
+
+  const openCreate = () => {
+    setEditingCampaign(null);
+    setComposeOpen(true);
+  };
+
+  const openEdit = (campaign: PushCampaign) => {
+    setEditingCampaign(campaign);
+    setComposeOpen(true);
+  };
+
   const handleSaveDraft = async (payload: PushCampaignPayload) => {
     setSaving(true);
     try {
+      if (editingCampaign) {
+        const { send_now: _sendNow, ...updatePayload } = payload;
+        const result = await updatePushCampaign(editingCampaign.id, updatePayload);
+        if (result) {
+          setComposeOpen(false);
+          await queryClient.invalidateQueries({ queryKey: ["push-campaigns"] });
+          await queryClient.invalidateQueries({ queryKey: ["push-campaign", editingCampaign.id] });
+        }
+        return;
+      }
+
       const result = await createPushCampaign(payload);
       if (result) {
         setComposeOpen(false);
@@ -57,6 +88,21 @@ const PushNotifications = () => {
   const handleSend = async (payload: PushCampaignPayload) => {
     setSending(true);
     try {
+      if (editingCampaign) {
+        const { send_now: _sendNow, ...updatePayload } = payload;
+        const updated = await updatePushCampaign(editingCampaign.id, updatePayload);
+        if (!updated) return;
+
+        const sendResult = await sendPushCampaign(editingCampaign.id);
+        if (sendResult) {
+          setComposeOpen(false);
+          await queryClient.invalidateQueries({ queryKey: ["push-campaigns"] });
+          await queryClient.invalidateQueries({ queryKey: ["push-campaign", editingCampaign.id] });
+          navigate(`/push-notifications/${editingCampaign.id}`);
+        }
+        return;
+      }
+
       const result = await createPushCampaign(payload);
       if (result) {
         setComposeOpen(false);
@@ -97,7 +143,7 @@ const PushNotifications = () => {
               <RefreshCw className={`h-4 w-4 mr-2 ${campaignsFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            <Button className="bg-purple hover:bg-purple/90" onClick={() => setComposeOpen(true)}>
+            <Button className="bg-purple hover:bg-purple/90" onClick={openCreate}>
               <Plus className="h-4 w-4 mr-2" />
               New push
             </Button>
@@ -130,7 +176,7 @@ const PushNotifications = () => {
           <CardHeader>
             <CardTitle>All campaigns</CardTitle>
             <CardDescription>
-              Click a row to view stats and details. Drafts can be sent from the detail page.
+              Click a row to view stats and details. Drafts can be edited or sent from here.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -190,16 +236,18 @@ const PushNotifications = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              navigate(`/push-notifications/${campaign.id}`);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {!campaign.sent ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openEdit(campaign);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          ) : null}
                           <Button
                             variant="destructive"
                             size="sm"
@@ -227,7 +275,8 @@ const PushNotifications = () => {
 
       <PushComposeModal
         open={composeOpen}
-        onOpenChange={setComposeOpen}
+        onOpenChange={handleComposeOpenChange}
+        campaign={editingCampaign}
         saving={saving}
         sending={sending}
         onSaveDraft={handleSaveDraft}

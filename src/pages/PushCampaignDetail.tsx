@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Send, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
+import { PushComposeModal } from "@/components/push-campaigns/PushComposeModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,9 @@ import { PushStatsCards } from "@/components/push-campaigns/PushStatsCards";
 import {
   deletePushCampaign,
   getPushCampaign,
+  PushCampaignPayload,
   sendPushCampaign,
+  updatePushCampaign,
 } from "@/services/api";
 
 const targetLabel = (target: string, search: string | null) => {
@@ -25,6 +28,9 @@ const PushCampaignDetail = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [sending, setSending] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [sendingFromCompose, setSendingFromCompose] = useState(false);
 
   const campaignId = id ? Number.parseInt(id, 10) : NaN;
 
@@ -58,6 +64,41 @@ const PushCampaignDetail = () => {
     if (deleted) {
       await queryClient.invalidateQueries({ queryKey: ["push-campaigns"] });
       navigate("/push-notifications");
+    }
+  };
+
+  const handleSaveDraft = async (payload: PushCampaignPayload) => {
+    if (!campaign) return;
+    setSaving(true);
+    try {
+      const { send_now: _sendNow, ...updatePayload } = payload;
+      const result = await updatePushCampaign(campaign.id, updatePayload);
+      if (result) {
+        setComposeOpen(false);
+        await queryClient.invalidateQueries({ queryKey: ["push-campaign", campaign.id] });
+        await queryClient.invalidateQueries({ queryKey: ["push-campaigns"] });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSendFromCompose = async (payload: PushCampaignPayload) => {
+    if (!campaign) return;
+    setSendingFromCompose(true);
+    try {
+      const { send_now: _sendNow, ...updatePayload } = payload;
+      const updated = await updatePushCampaign(campaign.id, updatePayload);
+      if (!updated) return;
+
+      const sendResult = await sendPushCampaign(campaign.id);
+      if (sendResult) {
+        setComposeOpen(false);
+        await queryClient.invalidateQueries({ queryKey: ["push-campaign", campaign.id] });
+        await queryClient.invalidateQueries({ queryKey: ["push-campaigns"] });
+      }
+    } finally {
+      setSendingFromCompose(false);
     }
   };
 
@@ -107,10 +148,16 @@ const PushCampaignDetail = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             {!campaign?.sent ? (
-              <Button onClick={handleSend} disabled={sending || isLoading}>
-                <Send className="h-4 w-4 mr-2" />
-                {sending ? "Sending…" : "Send now"}
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setComposeOpen(true)} disabled={isLoading}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button onClick={handleSend} disabled={sending || isLoading}>
+                  <Send className="h-4 w-4 mr-2" />
+                  {sending ? "Sending…" : "Send now"}
+                </Button>
+              </>
             ) : null}
             <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
               <Trash2 className="h-4 w-4 mr-2" />
@@ -161,6 +208,18 @@ const PushCampaignDetail = () => {
           </CardContent>
         </Card>
       </div>
+
+      {campaign && !campaign.sent ? (
+        <PushComposeModal
+          open={composeOpen}
+          onOpenChange={setComposeOpen}
+          campaign={campaign}
+          saving={saving}
+          sending={sendingFromCompose}
+          onSaveDraft={handleSaveDraft}
+          onSend={handleSendFromCompose}
+        />
+      ) : null}
     </DashboardLayout>
   );
 };

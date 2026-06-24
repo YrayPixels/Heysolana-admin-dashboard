@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import {
   getPushRecipients,
   previewAdminPush,
+  PushCampaign,
   PushCampaignPayload,
   PushRecipient,
 } from "@/services/api";
@@ -50,9 +51,23 @@ const emptyForm = {
   selectedIds: [] as number[],
 };
 
+const buildInitialForm = (campaign?: PushCampaign | null) => {
+  if (!campaign) return emptyForm;
+  return {
+    title: campaign.title,
+    body: campaign.body,
+    link: campaign.link ?? "",
+    search: campaign.search ?? "",
+    deviceFilter: campaign.device_type ?? ("all" as const),
+    targetMode: campaign.target,
+    selectedIds: campaign.token_ids ?? [],
+  };
+};
+
 interface PushComposeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  campaign?: PushCampaign | null;
   saving: boolean;
   sending: boolean;
   onSaveDraft: (payload: PushCampaignPayload) => Promise<void>;
@@ -62,11 +77,13 @@ interface PushComposeModalProps {
 export const PushComposeModal = ({
   open,
   onOpenChange,
+  campaign,
   saving,
   sending,
   onSaveDraft,
   onSend,
 }: PushComposeModalProps) => {
+  const isEditing = Boolean(campaign);
   const [title, setTitle] = useState(emptyForm.title);
   const [body, setBody] = useState(emptyForm.body);
   const [link, setLink] = useState(emptyForm.link);
@@ -111,8 +128,21 @@ export const PushComposeModal = ({
       setSelectedIds(emptyForm.selectedIds);
       setPage(1);
       setPreview(null);
+      return;
     }
-  }, [open]);
+
+    const initial = buildInitialForm(campaign);
+    setTitle(initial.title);
+    setBody(initial.body);
+    setLink(initial.link);
+    setSearch(initial.search);
+    setDebouncedSearch(initial.search.trim());
+    setDeviceFilter(initial.deviceFilter);
+    setTargetMode(initial.targetMode);
+    setSelectedIds(initial.selectedIds);
+    setPage(1);
+    setPreview(null);
+  }, [open, campaign]);
 
   const buildPayloadBase = useCallback(
     () => ({
@@ -222,9 +252,13 @@ export const PushComposeModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto border-white/10 bg-background">
         <DialogHeader>
-          <DialogTitle>Compose push notification</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Edit push notification" : "Compose push notification"}
+          </DialogTitle>
           <DialogDescription>
-            Write your message, choose who receives it, then save as draft or send immediately.
+            {isEditing
+              ? "Update the message or audience, then save your changes or send immediately."
+              : "Write your message, choose who receives it, then save as draft or send immediately."}
           </DialogDescription>
         </DialogHeader>
 
@@ -285,7 +319,7 @@ export const PushComposeModal = ({
                 disabled={busy || (preview?.device_count ?? 0) === 0}
               >
                 <Save className="h-4 w-4 mr-2" />
-                {saving ? "Saving…" : "Save draft"}
+                {saving ? "Saving…" : isEditing ? "Save changes" : "Save draft"}
               </Button>
               <Button
                 className="flex-1 bg-purple hover:bg-purple/90"

@@ -2409,6 +2409,7 @@ export interface SupportConversationsResponse {
 export interface SupportConversationDetail {
   conversation: SupportConversation;
   messages: SupportMessage[];
+  message?: SupportMessage;
 }
 
 export interface AddressbookUserSearchResult {
@@ -2443,20 +2444,29 @@ export const getSupportConversations = async (filters: {
   }
 };
 
+function normalizeSupportMessages(raw: unknown): SupportMessage[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') {
+    return Object.values(raw as Record<string, SupportMessage>);
+  }
+  return [];
+}
+
 export const getSupportConversation = async (
   id: number
-): Promise<SupportConversationDetail | null> => {
-  try {
-    const response = await authenticatedFetch(
-      `${API_BASE_URL}/admin/support/conversations/${id}`
-    );
-    const json = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(json.message || 'Failed to load conversation');
-    return json.data as SupportConversationDetail;
-  } catch (error) {
-    handleError(error);
-    return null;
+): Promise<SupportConversationDetail> => {
+  const response = await authenticatedFetch(
+    `${API_BASE_URL}/admin/support/conversations/${id}`
+  );
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.message || 'Failed to load conversation');
   }
+  const data = json.data as SupportConversationDetail;
+  return {
+    ...data,
+    messages: normalizeSupportMessages(data?.messages),
+  };
 };
 
 export const sendSupportAdminMessage = async (
@@ -2489,7 +2499,12 @@ export const sendSupportAdminMessage = async (
     const json = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(json.message || 'Failed to send message');
     toast.success('Message sent');
-    return json.data as SupportConversationDetail;
+    const payload = json.data as SupportConversationDetail;
+    return {
+      conversation: payload.conversation,
+      messages: payload.message ? [payload.message] : [],
+      message: payload.message,
+    };
   } catch (error) {
     handleError(error);
     return null;
