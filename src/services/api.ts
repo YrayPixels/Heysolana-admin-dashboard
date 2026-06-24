@@ -103,9 +103,10 @@ const handleError = (error: Error | { response?: { data?: { message?: string } }
 // Enhanced fetch function with automatic token handling
 const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('auth_token');
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers,
   };
@@ -2385,6 +2386,10 @@ export interface SupportMessage {
   sender_type: 'user' | 'admin';
   sender_admin_id?: number | null;
   body: string;
+  attachment_url?: string | null;
+  attachment_mime?: string | null;
+  attachment_original_name?: string | null;
+  has_attachment?: boolean;
   read_at?: string | null;
   created_at?: string;
   admin?: { id: number; name: string } | null;
@@ -2456,16 +2461,31 @@ export const getSupportConversation = async (
 
 export const sendSupportAdminMessage = async (
   conversationId: number,
-  body: string
+  body: string,
+  attachment?: File | null
 ): Promise<SupportConversationDetail | null> => {
   try {
-    const response = await authenticatedFetch(
-      `${API_BASE_URL}/admin/support/conversations/${conversationId}/messages`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ body }),
-      }
-    );
+    let response: Response;
+    const trimmed = body.trim();
+
+    if (attachment) {
+      const form = new FormData();
+      if (trimmed) form.append('body', trimmed);
+      form.append('attachment', attachment);
+      response = await authenticatedFetch(
+        `${API_BASE_URL}/admin/support/conversations/${conversationId}/messages`,
+        { method: 'POST', body: form }
+      );
+    } else {
+      response = await authenticatedFetch(
+        `${API_BASE_URL}/admin/support/conversations/${conversationId}/messages`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ body: trimmed }),
+        }
+      );
+    }
+
     const json = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(json.message || 'Failed to send message');
     toast.success('Message sent');
