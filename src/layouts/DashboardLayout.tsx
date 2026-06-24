@@ -7,6 +7,7 @@ import {
   CalendarClock,
   ChevronFirst,
   ChevronLast,
+  Headphones,
   LogOut,
   Menu,
   MessageCircle,
@@ -95,6 +96,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "WhatsApp messaging",
       icon: <MessageCircle className="h-5 w-5" />,
       path: "/whatsapp-messaging",
+    },
+    {
+      name: "Support inbox",
+      icon: <Headphones className="h-5 w-5" />,
+      path: "/support",
     },
     {
       name: "Orders",

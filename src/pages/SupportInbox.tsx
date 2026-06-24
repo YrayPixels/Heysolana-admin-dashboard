@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Headphones, MessageCircle, Plus, RefreshCw } from "lucide-react";
+import { Headphones, Mail, MessageCircle, Plus, RefreshCw, Save } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -18,7 +19,12 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SupportComposeModal } from "@/components/support/SupportComposeModal";
-import { getSupportConversations, SupportConversation } from "@/services/api";
+import {
+  getProcessingFeeSettings,
+  getSupportConversations,
+  SupportConversation,
+  updateProcessingFeeSettings,
+} from "@/services/api";
 
 const STATUS_TABS = [
   { value: "all", label: "All" },
@@ -53,6 +59,27 @@ const SupportInbox = () => {
   const [status, setStatus] = useState("open");
   const [search, setSearch] = useState("");
   const [composeOpen, setComposeOpen] = useState(false);
+  const [notificationEmail, setNotificationEmail] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  const { data: notificationSettings } = useQuery({
+    queryKey: ["processing-fee-settings"],
+    queryFn: getProcessingFeeSettings,
+  });
+
+  useEffect(() => {
+    if (notificationSettings) {
+      setNotificationEmail(notificationSettings.support_inbox_email ?? "");
+    }
+  }, [notificationSettings]);
+
+  const handleSaveNotificationEmail = async () => {
+    setSavingEmail(true);
+    await updateProcessingFeeSettings({
+      support_inbox_email: notificationEmail.trim(),
+    });
+    setSavingEmail(false);
+  };
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["support-conversations", status, search],
@@ -102,10 +129,37 @@ const SupportInbox = () => {
           </Card>
           <Card className="glass-morphism border-white/10 sm:col-span-2">
             <CardHeader className="pb-2">
-              <CardDescription>Open conversations</CardDescription>
-              <CardTitle className="text-3xl">
-                {conversations.filter((c) => c.status === "open").length}
-              </CardTitle>
+              <CardDescription className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email alerts for new user messages
+              </CardDescription>
+              <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-end">
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="support-inbox-email" className="text-xs text-muted-foreground">
+                    Notify this address (also emails the last agent who replied)
+                  </Label>
+                  <Input
+                    id="support-inbox-email"
+                    type="email"
+                    placeholder="support@heysolana.com"
+                    value={notificationEmail}
+                    onChange={(e) => setNotificationEmail(e.target.value)}
+                    className="bg-black/20"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void handleSaveNotificationEmail()}
+                  disabled={savingEmail}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground pt-1">
+                Falls back to the bug report email if left empty.
+              </p>
             </CardHeader>
           </Card>
         </div>

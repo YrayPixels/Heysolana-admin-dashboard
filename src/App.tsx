@@ -27,6 +27,8 @@ import WhatsAppMessaging from "./pages/WhatsAppMessaging";
 import WhatsAppCampaignDetail from "./pages/WhatsAppCampaignDetail";
 import BugReports from "./pages/BugReports";
 import BugReportDetail from "./pages/BugReportDetail";
+import SupportInbox from "./pages/SupportInbox";
+import SupportConversationDetail from "./pages/SupportConversationDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -267,6 +269,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <BugReportDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/support"
+        element={
+          <ProtectedRoute>
+            <SupportInbox />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/support/:id"
+        element={
+          <ProtectedRoute>
+            <SupportConversationDetail />
           </ProtectedRoute>
         }
       />

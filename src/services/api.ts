@@ -1123,6 +1123,8 @@ export interface ProcessingFeeSettings {
   jupiter_referral_fee_bps: string;
   /** Email address to notify when new bug reports arrive */
   bug_report_email: string;
+  /** Email address to notify when users send support chat messages */
+  support_inbox_email: string;
   /** Master switch for Hey Points (cashback earn + redeem in wallet). */
   hey_points_enabled: string;
   airtime_cashback_enabled: string;
@@ -2152,6 +2154,7 @@ export const updateProcessingFeeSettings = async (
     jupiter_referral_account: string;
     jupiter_referral_fee_bps: number;
     bug_report_email: string;
+    support_inbox_email: string;
     hey_points_enabled?: '0' | '1';
     airtime_cashback_enabled?: '0' | '1';
     airtime_cashback_percent?: number;
