@@ -2455,18 +2455,23 @@ function normalizeSupportMessages(raw: unknown): SupportMessage[] {
 export const getSupportConversation = async (
   id: number
 ): Promise<SupportConversationDetail> => {
-  const response = await authenticatedFetch(
-    `${API_BASE_URL}/admin/support/conversations/${id}`
-  );
-  const json = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(json.message || 'Failed to load conversation');
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/support/conversations/${id}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(json.message || 'Failed to load conversation');
+    }
+    const data = json.data as SupportConversationDetail;
+    return {
+      ...data,
+      messages: normalizeSupportMessages(data?.messages),
+    };
+  } catch (error) {
+    handleError(error);
+    throw error;
   }
-  const data = json.data as SupportConversationDetail;
-  return {
-    ...data,
-    messages: normalizeSupportMessages(data?.messages),
-  };
 };
 
 export const sendSupportAdminMessage = async (
