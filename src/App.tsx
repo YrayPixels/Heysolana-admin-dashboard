@@ -18,11 +18,13 @@ import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
 import Admins from "./pages/Admins";
 import PushNotifications from "./pages/PushNotifications";
+import PushCampaignDetail from "./pages/PushCampaignDetail";
 import ScheduledPushes from "./pages/ScheduledPushes";
 import ScheduledPushDetail from "./pages/ScheduledPushDetail";
 import NotificationNudges from "./pages/NotificationNudges";
 import NotificationNudgeDetail from "./pages/NotificationNudgeDetail";
 import WhatsAppMessaging from "./pages/WhatsAppMessaging";
+import WhatsAppCampaignDetail from "./pages/WhatsAppCampaignDetail";
 import BugReports from "./pages/BugReports";
 import BugReportDetail from "./pages/BugReportDetail";
 import NotFound from "./pages/NotFound";
@@ -189,6 +191,15 @@ const AppRoutes = () => {
       />
 
       <Route
+        path="/push-notifications/:id"
+        element={
+          <ProtectedRoute>
+            <PushCampaignDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/scheduled-pushes"
         element={
           <ProtectedRoute>
@@ -229,6 +240,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <WhatsAppMessaging />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/whatsapp-messaging/:id"
+        element={
+          <ProtectedRoute>
+            <WhatsAppCampaignDetail />
           </ProtectedRoute>
         }
       />

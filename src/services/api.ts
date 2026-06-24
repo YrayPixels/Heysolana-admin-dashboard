@@ -1695,7 +1695,403 @@ export const runScheduledPushCampaignNow = async (
   }
 };
 
-// ============ WhatsApp messages (Admin) ============
+// ============ Push campaigns (Admin) ============
+
+export type PushCampaignTarget = "all" | "filtered" | "selected";
+
+export interface PushCampaign {
+  id: number;
+  name: string | null;
+  campaign_key: string;
+  status: "draft" | "sent";
+  sent: boolean;
+  title: string;
+  body: string;
+  link: string | null;
+  target: PushCampaignTarget;
+  device_type: "ios" | "android" | null;
+  search: string | null;
+  token_ids: number[];
+  phone_numbers: string[];
+  active_only: boolean;
+  sent_at: string | null;
+  device_count: number | null;
+  user_count: number | null;
+  stats?: {
+    sent: number;
+    opened: number;
+    unique_openers: number;
+    ctr_rate: number;
+  };
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PushCampaignPayload {
+  name?: string | null;
+  campaign_key?: string;
+  title: string;
+  body: string;
+  link?: string | null;
+  target: PushCampaignTarget;
+  device_type?: "ios" | "android" | null;
+  search?: string | null;
+  token_ids?: number[];
+  phone_numbers?: string[];
+  active_only?: boolean;
+  send_now?: boolean;
+}
+
+export interface PushCampaignsResponse {
+  success: boolean;
+  data: PushCampaign[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+const getPushCampaignErrorMessage = (
+  json: { message?: string; errors?: Record<string, string[]> },
+  fallback: string
+) => {
+  const firstValidationError = json.errors
+    ? Object.values(json.errors).flat().find(Boolean)
+    : null;
+  return firstValidationError || json.message || fallback;
+};
+
+export const getPushCampaigns = async (
+  filters: { search?: string; status?: "draft" | "sent"; page?: number; per_page?: number } = {}
+): Promise<PushCampaignsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.search) params.set("search", filters.search);
+    if (filters.status) params.set("status", filters.status);
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/push-campaigns${params.toString() ? `?${params.toString()}` : ""}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getPushCampaignErrorMessage(json, `Failed to fetch push campaigns: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const createPushCampaign = async (
+  payload: PushCampaignPayload
+): Promise<PushCampaign | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/push-campaigns`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getPushCampaignErrorMessage(json, `Failed to create push campaign: ${response.statusText}`)
+      );
+    }
+    toast.success(json.message ?? "Push campaign saved");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getPushCampaign = async (
+  id: number
+): Promise<{ success: boolean; data: PushCampaign } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/push-campaigns/${id}`);
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getPushCampaignErrorMessage(json, `Failed to fetch push campaign: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updatePushCampaign = async (
+  id: number,
+  payload: Omit<PushCampaignPayload, "send_now">
+): Promise<PushCampaign | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/push-campaigns/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getPushCampaignErrorMessage(json, `Failed to update push campaign: ${response.statusText}`)
+      );
+    }
+    toast.success("Push campaign updated");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deletePushCampaign = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/push-campaigns/${id}`, {
+      method: "DELETE",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getPushCampaignErrorMessage(json, `Failed to delete push campaign: ${response.statusText}`)
+      );
+    }
+    toast.success("Push campaign deleted");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
+export const sendPushCampaign = async (
+  id: number
+): Promise<{ sent_count: number; device_count: number; user_count: number } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/push-campaigns/${id}/send`, {
+      method: "POST",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getPushCampaignErrorMessage(json, `Failed to send push campaign: ${response.statusText}`)
+      );
+    }
+    const sent = json.data?.sent_count ?? json.data?.device_count ?? 0;
+    toast.success(`Sent to ${sent} device(s)`);
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+// ============ WhatsApp campaigns (Admin) ============
+
+export interface WhatsAppCampaign {
+  id: number;
+  name: string | null;
+  campaign_key: string;
+  status: "draft" | "sent";
+  sent: boolean;
+  message_mode: WhatsAppMessageMode;
+  header: string | null;
+  body: string;
+  app_link: string | null;
+  template_name: string | null;
+  template_language: string | null;
+  target: WhatsAppTargetMode;
+  search: string | null;
+  user_ids: number[];
+  phone_numbers: string[];
+  sent_at: string | null;
+  recipient_count: number | null;
+  stats?: {
+    queued: number;
+    delivered: number;
+    failed: number;
+    sent: number;
+    link_clicks: number;
+    unique_clickers: number;
+    ctr_rate: number;
+  };
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface WhatsAppCampaignPayload {
+  name?: string | null;
+  campaign_key?: string;
+  message_mode: WhatsAppMessageMode;
+  header?: string | null;
+  body: string;
+  app_link?: string | null;
+  template_name?: string | null;
+  template_language?: string | null;
+  target: WhatsAppTargetMode;
+  search?: string | null;
+  user_ids?: number[];
+  phone_numbers?: string[];
+  send_now?: boolean;
+}
+
+export interface WhatsAppCampaignsResponse {
+  success: boolean;
+  data: WhatsAppCampaign[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+const getWhatsAppCampaignErrorMessage = (
+  json: { message?: string; errors?: Record<string, string[]> },
+  fallback: string
+) => {
+  const firstValidationError = json.errors
+    ? Object.values(json.errors).flat().find(Boolean)
+    : null;
+  return firstValidationError || json.message || fallback;
+};
+
+export const previewWhatsAppCampaign = async (
+  payload: Omit<WhatsAppCampaignPayload, "send_now" | "body"> & { body?: string }
+): Promise<{ recipient_count: number } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/whatsapp-campaigns/preview`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Preview failed: ${response.statusText}`)
+      );
+    }
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getWhatsAppCampaigns = async (
+  filters: { search?: string; status?: "draft" | "sent"; page?: number; per_page?: number } = {}
+): Promise<WhatsAppCampaignsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.search) params.set("search", filters.search);
+    if (filters.status) params.set("status", filters.status);
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/whatsapp-campaigns${params.toString() ? `?${params.toString()}` : ""}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Failed to fetch WhatsApp campaigns: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const createWhatsAppCampaign = async (
+  payload: WhatsAppCampaignPayload
+): Promise<WhatsAppCampaign | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/whatsapp-campaigns`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Failed to create WhatsApp campaign: ${response.statusText}`)
+      );
+    }
+    toast.success(json.message ?? "WhatsApp campaign saved");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getWhatsAppCampaign = async (
+  id: number
+): Promise<{ success: boolean; data: WhatsAppCampaign } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/whatsapp-campaigns/${id}`);
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Failed to fetch WhatsApp campaign: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deleteWhatsAppCampaign = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/whatsapp-campaigns/${id}`, {
+      method: "DELETE",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Failed to delete WhatsApp campaign: ${response.statusText}`)
+      );
+    }
+    toast.success("WhatsApp campaign deleted");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
+export const sendWhatsAppCampaign = async (
+  id: number
+): Promise<{ queued_count: number; recipient_count: number } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/whatsapp-campaigns/${id}/send`, {
+      method: "POST",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Failed to queue WhatsApp campaign: ${response.statusText}`)
+      );
+    }
+    const count = json.data?.queued_count ?? json.data?.recipient_count ?? 0;
+    toast.success(`Queued ${count} WhatsApp message(s)`);
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+// ============ WhatsApp messages (legacy) ============
 
 export type WhatsAppTargetMode = "all" | "filtered" | "selected";
 export type WhatsAppMessageMode = "template" | "custom";

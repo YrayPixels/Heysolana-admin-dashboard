@@ -1,27 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  AlertCircle,
-  MessageCircle,
-  RefreshCw,
-  Search,
-  Send,
-  Users,
-} from "lucide-react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, Edit, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
+import { WhatsAppComposeModal } from "@/components/whatsapp-campaigns/WhatsAppComposeModal";
+import { WhatsAppStatsCards } from "@/components/whatsapp-campaigns/WhatsAppStatsCards";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -31,116 +18,63 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
 import {
-  getUsers,
-  sendAdminWhatsApp,
-  User,
-  WhatsAppMessageMode,
-  WhatsAppTargetMode,
+  createWhatsAppCampaign,
+  deleteWhatsAppCampaign,
+  getWhatsAppCampaigns,
+  WhatsAppCampaign,
+  WhatsAppCampaignPayload,
 } from "@/services/api";
 
 const WhatsAppMessaging = () => {
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [targetMode, setTargetMode] = useState<WhatsAppTargetMode>("filtered");
-  const [messageMode, setMessageMode] = useState<WhatsAppMessageMode>("template");
-  const [templateName, setTemplateName] = useState("notification");
-  const [templateLanguage, setTemplateLanguage] = useState("en_US");
-  const [header, setHeader] = useState("HeySolana");
-  const [body, setBody] = useState("");
-  const [appLink, setAppLink] = useState("");
-  const [page, setPage] = useState(1);
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 400);
-    return () => clearTimeout(timeout);
-  }, [search]);
-
-  useEffect(() => {
-    setPage(1);
-    setSelectedUserIds([]);
-  }, [debouncedSearch, targetMode]);
-
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["whatsapp-users", debouncedSearch, targetMode, page],
-    queryFn: () =>
-      getUsers({
-        search: targetMode === "all" ? undefined : debouncedSearch || undefined,
-        page,
-        per_page: targetMode === "all" ? 1 : 15,
-      }),
+    queryKey: ["whatsapp-campaigns"],
+    queryFn: () => getWhatsAppCampaigns({ per_page: 50 }),
   });
 
-  const users = useMemo(() => data?.users ?? [], [data?.users]);
-  const meta = data;
-  const recipientCount =
-    targetMode === "selected" ? selectedUserIds.length : meta?.total ?? 0;
+  const campaigns = data?.data ?? [];
+  const latestSent = campaigns.find((c) => c.sent) ?? null;
 
-  const toggleSelect = (id: number) => {
-    setTargetMode("selected");
-    setSelectedUserIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-
-  const toggleSelectAllOnPage = () => {
-    const ids = users.map((user) => user.id);
-    if (ids.every((id) => selectedUserIds.includes(id))) {
-      setSelectedUserIds((prev) => prev.filter((id) => !ids.includes(id)));
-    } else {
-      setTargetMode("selected");
-      setSelectedUserIds((prev) => Array.from(new Set([...prev, ...ids])));
+  const handleSaveDraft = async (payload: WhatsAppCampaignPayload) => {
+    setSaving(true);
+    try {
+      const result = await createWhatsAppCampaign(payload);
+      if (result) {
+        setComposeOpen(false);
+        await queryClient.invalidateQueries({ queryKey: ["whatsapp-campaigns"] });
+        navigate(`/whatsapp-messaging/${result.id}`);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleSend = async () => {
-    if (messageMode === "template" && !templateName.trim()) {
-      toast.error("Template name is required");
-      return;
-    }
-    if (messageMode === "template" && !header.trim()) {
-      toast.error("Header variable is required");
-      return;
-    }
-    if (!body.trim()) {
-      toast.error("Message is required");
-      return;
-    }
-    if (messageMode === "template" && !appLink.trim()) {
-      toast.error("App link URL variable is required");
-      return;
-    }
-    if (targetMode === "selected" && selectedUserIds.length === 0) {
-      toast.error("Select at least one user or switch to filtered / all users");
-      return;
-    }
-    if (
-      !window.confirm(
-        `Queue WhatsApp message for ${recipientCount} recipient(s)? The worker will process these in the background.`
-      )
-    ) {
-      return;
-    }
-
+  const handleSend = async (payload: WhatsAppCampaignPayload) => {
     setSending(true);
     try {
-      await sendAdminWhatsApp({
-        target: targetMode,
-        message_mode: messageMode,
-        header: messageMode === "template" ? header.trim() : undefined,
-        body: body.trim(),
-        app_link: messageMode === "template" ? appLink.trim() : undefined,
-        template_name: messageMode === "template" ? templateName.trim() : undefined,
-        template_language: messageMode === "template" ? templateLanguage.trim() : undefined,
-        search: targetMode === "filtered" && debouncedSearch ? debouncedSearch : undefined,
-        user_ids: targetMode === "selected" ? selectedUserIds : undefined,
-      });
+      const result = await createWhatsAppCampaign(payload);
+      if (result) {
+        setComposeOpen(false);
+        await queryClient.invalidateQueries({ queryKey: ["whatsapp-campaigns"] });
+        navigate(`/whatsapp-messaging/${result.id}`);
+      }
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDelete = async (event: React.MouseEvent, campaign: WhatsAppCampaign) => {
+    event.stopPropagation();
+    if (!window.confirm(`Delete "${campaign.name ?? campaign.body}"?`)) return;
+    const deleted = await deleteWhatsAppCampaign(campaign.id);
+    if (deleted) {
+      await queryClient.invalidateQueries({ queryKey: ["whatsapp-campaigns"] });
     }
   };
 
@@ -155,280 +89,164 @@ const WhatsAppMessaging = () => {
             <div>
               <h1 className="text-2xl font-bold">WhatsApp messaging</h1>
               <p className="text-muted-foreground text-sm">
-                Queue WhatsApp messages to users with registered phone numbers
+                Compose, queue, and track WhatsApp notification campaigns
               </p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            <Button className="bg-green-600 hover:bg-green-700" onClick={() => setComposeOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New message
+            </Button>
+          </div>
         </div>
 
         <Alert className="border-green-500/30 bg-green-500/10">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Queued delivery</AlertTitle>
           <AlertDescription>
-            This page schedules WhatsApp messages. The Laravel queue worker must be running
+            Campaigns are queued for background delivery. The Laravel queue worker must be running
             for messages to actually send.
           </AlertDescription>
         </Alert>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 glass-morphism border-white/10">
-            <CardHeader>
-              <CardTitle>Compose WhatsApp message</CardTitle>
-              <CardDescription>
-                Use an approved template for messages outside WhatsApp&apos;s 24-hour window.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Message type</label>
-                <Select
-                  value={messageMode}
-                  onValueChange={(value) => setMessageMode(value as WhatsAppMessageMode)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="template">Approved template</SelectItem>
-                    <SelectItem value="custom">Custom message</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {messageMode === "template" && (
-                <div className="space-y-3">
-                  <div className="grid md:grid-cols-3 gap-3">
-                    <div className="md:col-span-2">
-                      <label className="text-sm font-medium mb-1 block">Template name</label>
-                      <Input
-                        placeholder="notification"
-                        value={templateName}
-                        onChange={(event) => setTemplateName(event.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">Language</label>
-                      <Input
-                        placeholder="en_US"
-                        value={templateLanguage}
-                        onChange={(event) => setTemplateLanguage(event.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Header variable</label>
-                    <Input
-                      placeholder="HeySolana"
-                      value={header}
-                      onChange={(event) => setHeader(event.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Sent as the template header variable.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  {messageMode === "template" ? "Notification message" : "Message"}
-                </label>
-                <Textarea
-                  placeholder={
-                    messageMode === "template"
-                      ? "This is passed into the notification template body"
-                      : "Write your WhatsApp message..."
-                  }
-                  value={body}
-                  onChange={(event) => setBody(event.target.value)}
-                  rows={5}
-                  maxLength={1000}
-                />
-                {messageMode === "template" && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    The backend sends the recipient username as body variable 1 and this message as body variable 2.
-                  </p>
-                )}
-              </div>
-
-              {messageMode === "template" && (
+        {latestSent ? (
+          <div className="space-y-4">
+            <Card className="glass-morphism border-emerald-500/30">
+              <CardContent className="py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">App link URL variable</label>
-                  <Input
-                    placeholder="https://..."
-                    value={appLink}
-                    onChange={(event) => setAppLink(event.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Sent as the URL button variable for the app link.
+                  <Badge className="mb-2 bg-emerald-500/20 text-emerald-300">Latest queued</Badge>
+                  <p className="font-semibold">{latestSent.name ?? latestSent.header ?? latestSent.body}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {latestSent.sent_at
+                      ? new Date(latestSent.sent_at).toLocaleString()
+                      : latestSent.campaign_key}
                   </p>
                 </div>
-              )}
+                <Button variant="outline" onClick={() => navigate(`/whatsapp-messaging/${latestSent.id}`)}>
+                  View details
+                </Button>
+              </CardContent>
+            </Card>
+            <WhatsAppStatsCards campaign={latestSent} />
+          </div>
+        ) : null}
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Send to</label>
-                <Select
-                  value={targetMode}
-                  onValueChange={(value) => setTargetMode(value as WhatsAppTargetMode)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="filtered">Filtered users</SelectItem>
-                    <SelectItem value="selected">Selected users only</SelectItem>
-                    <SelectItem value="all">All users with phone numbers</SelectItem>
-                  </SelectContent>
-                </Select>
+        <Card className="glass-morphism border-white/10">
+          <CardHeader>
+            <CardTitle>All campaigns</CardTitle>
+            <CardDescription>
+              Click a row to view delivery stats and details. Drafts can be queued from the detail page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
               </div>
-
-              <div className="flex flex-wrap gap-2 text-sm">
-                <Badge variant="secondary">
-                  <Users className="h-3 w-3 mr-1" />
-                  {recipientCount} recipient(s)
-                </Badge>
-                {targetMode === "selected" && (
-                  <Badge variant="outline">{selectedUserIds.length} selected user(s)</Badge>
-                )}
-              </div>
-
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700"
-                onClick={handleSend}
-                disabled={sending || recipientCount === 0}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                {sending ? "Queueing..." : "Queue WhatsApp messages"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-morphism border-white/10">
-            <CardHeader>
-              <CardTitle className="text-base">Filters</CardTitle>
-              <CardDescription>
-                Search by username, phone number, or wallet address.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Phone, username, wallet..."
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  disabled={targetMode === "all"}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                The backend should enforce WhatsApp opt-in and skip users without valid phone
-                numbers before queueing jobs.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {targetMode !== "all" && (
-          <Card className="glass-morphism border-white/10">
-            <CardHeader>
-              <CardTitle className="text-base">Users with WhatsApp numbers</CardTitle>
-              <CardDescription>
-                {meta
-                  ? `${meta.total} matching user(s), page ${meta.current_page} of ${meta.last_page || 1}`
-                  : "Loading..."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-48 w-full" />
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10">
-                          <Checkbox
-                            checked={
-                              users.length > 0 &&
-                              users.every((user) => selectedUserIds.includes(user.id))
-                            }
-                            onCheckedChange={toggleSelectAllOnPage}
-                          />
-                        </TableHead>
-                        <TableHead>User</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Wallet</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground">
-                            No users match filters
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        users.map((user: User) => (
-                          <TableRow key={user.id}>
-                            <TableCell>
-                              <Checkbox
-                                checked={selectedUserIds.includes(user.id)}
-                                onCheckedChange={() => toggleSelect(user.id)}
-                                disabled={!user.phone_number}
-                              />
-                            </TableCell>
-                            <TableCell>{user.username || `User #${user.id}`}</TableCell>
-                            <TableCell className="font-mono text-xs">
-                              {user.phone_number || "No phone"}
-                            </TableCell>
-                            <TableCell className="font-mono text-xs max-w-[220px] truncate">
-                              {user.wallet_address || "-"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={user.phone_number ? "outline" : "secondary"}>
-                                {user.phone_number ? "Available" : "Missing phone"}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                  {meta && meta.last_page > 1 && (
-                    <div className="flex justify-between items-center mt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page <= 1}
-                        onClick={() => setPage((currentPage) => currentPage - 1)}
-                      >
-                        Previous
-                      </Button>
-                      <span className="text-sm text-muted-foreground">
-                        Page {meta.current_page} of {meta.last_page}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page >= meta.last_page}
-                        onClick={() => setPage((currentPage) => currentPage + 1)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Campaign</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Audience</TableHead>
+                    <TableHead>Stats</TableHead>
+                    <TableHead>Updated</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {campaigns.map((campaign) => (
+                    <TableRow
+                      key={campaign.id}
+                      className="cursor-pointer"
+                      onClick={() => navigate(`/whatsapp-messaging/${campaign.id}`)}
+                    >
+                      <TableCell>
+                        <div className="font-medium">
+                          {campaign.name ?? campaign.header ?? campaign.body.slice(0, 60)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{campaign.campaign_key}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={campaign.sent ? "default" : "outline"}>
+                          {campaign.sent ? "Queued" : "Draft"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm capitalize">{campaign.message_mode}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {campaign.target === "all"
+                          ? "All users"
+                          : campaign.target === "selected"
+                            ? `${campaign.user_ids?.length ?? 0} selected`
+                            : campaign.search || "Filtered"}
+                      </TableCell>
+                      <TableCell>
+                        {campaign.sent ? (
+                          <div className="grid gap-1 text-xs text-muted-foreground">
+                            <span>Queued: {campaign.stats?.sent ?? campaign.recipient_count ?? 0}</span>
+                            <span>Delivered: {campaign.stats?.delivered ?? 0}</span>
+                            <span>CTR: {campaign.stats?.ctr_rate ?? 0}%</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Not queued</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {campaign.updated_at ? new Date(campaign.updated_at).toLocaleString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(`/whatsapp-messaging/${campaign.id}`);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={(event) => handleDelete(event, campaign)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {campaigns.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        No campaigns yet. Click “New message” to compose your first one.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <WhatsAppComposeModal
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        saving={saving}
+        sending={sending}
+        onSaveDraft={handleSaveDraft}
+        onSend={handleSend}
+      />
     </DashboardLayout>
   );
 };
