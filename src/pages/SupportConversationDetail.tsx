@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, Send, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ImagePlus, Send, X, XCircle } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ function formatTime(iso: string | undefined) {
 
 function MessageBubble({ message }: { message: SupportMessage }) {
   const isAdmin = message.sender_type === "admin";
+  const hasImage = !!message.attachment_url;
+
   return (
     <div className={`flex ${isAdmin ? "justify-end" : "justify-start"} mb-3`}>
       <div
@@ -34,13 +36,27 @@ function MessageBubble({ message }: { message: SupportMessage }) {
             : "rounded-tl-sm bg-white/10 text-white/90"
         }`}
       >
-        {!isAdmin && (
-          <p className="text-xs text-white/50 mb-1">User</p>
-        )}
+        {!isAdmin && <p className="text-xs text-white/50 mb-1">User</p>}
         {isAdmin && message.admin?.name && (
           <p className="text-xs text-white/50 mb-1">{message.admin.name}</p>
         )}
-        <p className="whitespace-pre-wrap">{message.body}</p>
+        {hasImage && (
+          <a
+            href={message.attachment_url!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block mb-2"
+          >
+            <img
+              src={message.attachment_url!}
+              alt={message.attachment_original_name ?? "Support attachment"}
+              className="max-w-full rounded-xl max-h-64 object-cover"
+            />
+          </a>
+        )}
+        {!!message.body && (
+          <p className="whitespace-pre-wrap">{message.body}</p>
+        )}
         <p className="text-[10px] text-white/40 mt-1 text-right">
           {formatTime(message.created_at)}
         </p>
@@ -55,7 +71,9 @@ const SupportConversationDetail = () => {
   const queryClient = useQueryClient();
   const conversationId = Number(id);
   const [draft, setDraft] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, refetch, isFetching } = useQuery({
@@ -74,15 +92,29 @@ const SupportConversationDetail = () => {
 
   const handleSend = async () => {
     const text = draft.trim();
-    if (!text || sending) return;
+    if ((!text && !pendingFile) || sending) return;
     setSending(true);
-    const result = await sendSupportAdminMessage(conversationId, text);
+    const result = await sendSupportAdminMessage(conversationId, text, pendingFile);
     setSending(false);
     if (result) {
       setDraft("");
+      setPendingFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       await queryClient.invalidateQueries({ queryKey: ["support-conversation", conversationId] });
       await queryClient.invalidateQueries({ queryKey: ["support-conversations"] });
     }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return;
+    }
+    setPendingFile(file);
   };
 
   const handleStatus = async (status: "open" | "resolved" | "closed") => {
@@ -172,7 +204,47 @@ const SupportConversationDetail = () => {
             </div>
 
             <div className="border-t border-white/5 p-4 shrink-0">
+              {pendingFile && (
+                <div className="mb-3 flex items-center gap-3 rounded-lg bg-black/20 p-2">
+                  <img
+                    src={URL.createObjectURL(pendingFile)}
+                    alt="Pending attachment"
+                    className="h-16 w-16 rounded-lg object-cover"
+                  />
+                  <span className="flex-1 text-sm text-white/70 truncate">
+                    {pendingFile.name}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setPendingFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 self-end"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sending}
+                >
+                  <ImagePlus className="h-4 w-4" />
+                </Button>
                 <Textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
@@ -188,7 +260,7 @@ const SupportConversationDetail = () => {
                 />
                 <Button
                   onClick={() => void handleSend()}
-                  disabled={!draft.trim() || sending}
+                  disabled={(!draft.trim() && !pendingFile) || sending}
                   className="shrink-0 self-end"
                 >
                   <Send className="h-4 w-4" />
