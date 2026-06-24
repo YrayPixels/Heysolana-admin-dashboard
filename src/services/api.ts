@@ -2356,3 +2356,184 @@ export const clearBugReports = async (scope: 'fixed' | 'all'): Promise<number> =
     return 0;
   }
 };
+
+// ---- Support chat ----
+
+export type SupportConversationStatus = 'open' | 'resolved' | 'closed';
+
+export interface SupportConversation {
+  id: number;
+  addressbook_user_id?: number | null;
+  phone_number?: string | null;
+  wallet_address?: string | null;
+  username?: string | null;
+  status: SupportConversationStatus;
+  last_message_preview?: string | null;
+  last_message_at?: string | null;
+  unread_admin_count: number;
+  unread_user_count: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SupportMessage {
+  id: number;
+  conversation_id: number;
+  sender_type: 'user' | 'admin';
+  sender_admin_id?: number | null;
+  body: string;
+  read_at?: string | null;
+  created_at?: string;
+  admin?: { id: number; name: string } | null;
+}
+
+export interface SupportConversationsResponse {
+  data: SupportConversation[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    unread_total: number;
+  };
+}
+
+export interface SupportConversationDetail {
+  conversation: SupportConversation;
+  messages: SupportMessage[];
+}
+
+export interface AddressbookUserSearchResult {
+  id: number;
+  username?: string | null;
+  phone_number?: string | null;
+  wallet_address?: string | null;
+}
+
+export const getSupportConversations = async (filters: {
+  status?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+} = {}): Promise<SupportConversationsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.per_page) params.set('per_page', String(filters.per_page));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/support/conversations?${params.toString()}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.message || 'Failed to load support conversations');
+    return json as SupportConversationsResponse;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getSupportConversation = async (
+  id: number
+): Promise<SupportConversationDetail | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/support/conversations/${id}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.message || 'Failed to load conversation');
+    return json.data as SupportConversationDetail;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const sendSupportAdminMessage = async (
+  conversationId: number,
+  body: string
+): Promise<SupportConversationDetail | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/support/conversations/${conversationId}/messages`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ body }),
+      }
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.message || 'Failed to send message');
+    toast.success('Message sent');
+    return json.data as SupportConversationDetail;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const startSupportConversation = async (payload: {
+  body: string;
+  phone_number?: string;
+  wallet_address?: string;
+  user_id?: number;
+  username?: string;
+}): Promise<SupportConversationDetail | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/support/conversations/start`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.message || 'Failed to start conversation');
+    toast.success('Conversation started');
+    return json.data as SupportConversationDetail;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateSupportConversationStatus = async (
+  conversationId: number,
+  status: SupportConversationStatus
+): Promise<SupportConversation | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/support/conversations/${conversationId}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.message || 'Failed to update status');
+    toast.success(`Marked as ${status}`);
+    return json.data as SupportConversation;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const searchSupportUsers = async (
+  search: string
+): Promise<AddressbookUserSearchResult[]> => {
+  try {
+    const params = new URLSearchParams({ search });
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/support/conversations/search-users?${params.toString()}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.message || 'Search failed');
+    return (json.data ?? []) as AddressbookUserSearchResult[];
+  } catch (error) {
+    handleError(error);
+    return [];
+  }
+};
+
