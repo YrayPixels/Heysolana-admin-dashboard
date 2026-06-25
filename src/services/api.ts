@@ -1122,6 +1122,10 @@ export interface ProcessingFeeSettings {
   jupiter_referral_account: string;
   /** Basis points (50–255). Use 0 to disable Hey Solana swap fee. */
   jupiter_referral_fee_bps: string;
+  /** PajCash onramp integrator fee in USDC (sent as businessUSDCFee). */
+  pajcash_onramp_usdc_fee: string;
+  /** PajCash offramp integrator fee in USDC (sent as businessUSDCFee). */
+  pajcash_offramp_usdc_fee: string;
   /** Email address to notify when new bug reports arrive */
   bug_report_email: string;
   /** Email address to notify when users send support chat messages */
@@ -2154,6 +2158,8 @@ export const updateProcessingFeeSettings = async (
     delivery_fee_crossmint_usd: number;
     jupiter_referral_account: string;
     jupiter_referral_fee_bps: number;
+    pajcash_onramp_usdc_fee: number;
+    pajcash_offramp_usdc_fee: number;
     bug_report_email: string;
     support_inbox_email: string;
     hey_points_enabled?: '0' | '1';

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift } from 'lucide-react';
+import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,8 @@ const Settings = () => {
   const [deliveryFeeCrossmintUsd, setDeliveryFeeCrossmintUsd] = useState('');
   const [jupiterReferralAccount, setJupiterReferralAccount] = useState('');
   const [jupiterReferralFeeBps, setJupiterReferralFeeBps] = useState('');
+  const [pajcashOnrampUsdcFee, setPajcashOnrampUsdcFee] = useState('');
+  const [pajcashOfframpUsdcFee, setPajcashOfframpUsdcFee] = useState('');
   const [heyPointsEnabled, setHeyPointsEnabled] = useState(true);
   const [cashbackPercent, setCashbackPercent] = useState('');
   const [cashbackMinNgn, setCashbackMinNgn] = useState('');
@@ -46,6 +48,8 @@ const Settings = () => {
       setDeliveryFeeCrossmintUsd(settings.delivery_fee_crossmint_usd ?? '');
       setJupiterReferralAccount(settings.jupiter_referral_account ?? '');
       setJupiterReferralFeeBps(settings.jupiter_referral_fee_bps ?? '');
+      setPajcashOnrampUsdcFee(settings.pajcash_onramp_usdc_fee ?? '');
+      setPajcashOfframpUsdcFee(settings.pajcash_offramp_usdc_fee ?? '');
       setHeyPointsEnabled((settings.hey_points_enabled ?? '1') === '1');
       setCashbackPercent(settings.airtime_cashback_percent ?? '');
       setCashbackMinNgn(settings.airtime_cashback_min_purchase_ngn ?? '');
@@ -65,6 +69,8 @@ const Settings = () => {
       delivery_fee_crossmint_usd: deliveryFeeCrossmintUsd === '' ? undefined : Number(deliveryFeeCrossmintUsd),
       jupiter_referral_account: jupiterReferralAccount.trim() === '' ? undefined : jupiterReferralAccount.trim(),
       jupiter_referral_fee_bps: jupiterReferralFeeBps === '' ? undefined : Number(jupiterReferralFeeBps),
+      pajcash_onramp_usdc_fee: pajcashOnrampUsdcFee === '' ? undefined : Number(pajcashOnrampUsdcFee),
+      pajcash_offramp_usdc_fee: pajcashOfframpUsdcFee === '' ? undefined : Number(pajcashOfframpUsdcFee),
     });
     setSaving(false);
     if (result) {
@@ -372,6 +378,67 @@ const Settings = () => {
                   />
                   <p className="text-xs text-muted-foreground">
                     50 bps = 0.5%. Jupiter minimum when enabled is 50 bps. Set to 0 to turn off integrator fee.
+                  </p>
+                </div>
+                <Button onClick={handleSave} disabled={saving} className="w-fit">
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? 'Saving...' : 'Save all settings'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Landmark className="h-5 w-5" />
+              PajCash onramp / offramp fee
+            </CardTitle>
+            <CardDescription>
+              Hey Solana integrator fee on PajCash fiat ramps, denominated in USDC. The wallet sends this as{' '}
+              <code className="text-xs">businessUSDCFee</code> when creating onramp and offramp orders. Set to 0 to
+              disable. Users see the fee in the wallet before confirming.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <div className="grid gap-6 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="pajcash-onramp-fee">Onramp fee (USDC)</Label>
+                  <Input
+                    id="pajcash-onramp-fee"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    placeholder="0"
+                    value={pajcashOnrampUsdcFee}
+                    onChange={(e) => setPajcashOnrampUsdcFee(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Applied when users buy crypto with NGN via PajCash.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pajcash-offramp-fee">Offramp fee (USDC)</Label>
+                  <Input
+                    id="pajcash-offramp-fee"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    placeholder="0"
+                    value={pajcashOfframpUsdcFee}
+                    onChange={(e) => setPajcashOfframpUsdcFee(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Applied when users sell crypto for NGN via PajCash.
                   </p>
                 </div>
                 <Button onClick={handleSave} disabled={saving} className="w-fit">
