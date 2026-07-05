@@ -25,6 +25,8 @@ import NotificationNudges from "./pages/NotificationNudges";
 import NotificationNudgeDetail from "./pages/NotificationNudgeDetail";
 import WhatsAppMessaging from "./pages/WhatsAppMessaging";
 import WhatsAppCampaignDetail from "./pages/WhatsAppCampaignDetail";
+import EmailMessaging from "./pages/EmailMessaging";
+import EmailCampaignDetail from "./pages/EmailCampaignDetail";
 import BugReports from "./pages/BugReports";
 import BugReportDetail from "./pages/BugReportDetail";
 import SupportInbox from "./pages/SupportInbox";
@@ -251,6 +253,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <WhatsAppCampaignDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/email-messaging"
+        element={
+          <ProtectedRoute>
+            <EmailMessaging />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/email-messaging/:id"
+        element={
+          <ProtectedRoute>
+            <EmailCampaignDetail />
           </ProtectedRoute>
         }
       />

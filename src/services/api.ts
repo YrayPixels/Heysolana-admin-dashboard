@@ -637,6 +637,7 @@ export interface User {
   id: number;
   username: string;
   phone_number: string;
+  email?: string | null;
   wallet_address: string;
   pin: string;
   verification_status?: string;
@@ -696,6 +697,7 @@ export const getUsers = async (filters: UsersFilters = {}): Promise<UsersRespons
       users = users.filter(user =>
         user.username?.toLowerCase().includes(filters.search!.toLowerCase()) ||
         user.phone_number?.includes(filters.search) ||
+        user.email?.toLowerCase().includes(filters.search!.toLowerCase()) ||
         user.wallet_address?.toLowerCase().includes(filters.search.toLowerCase())
       );
     }
@@ -2142,6 +2144,202 @@ export const sendAdminWhatsApp = async (
       queued_count: queuedCount,
       recipient_count: json.recipient_count,
     };
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+// ============ Email campaigns (Admin) ============
+
+export type EmailTargetMode = "all" | "filtered" | "selected";
+
+export interface EmailCampaign {
+  id: number;
+  name: string | null;
+  campaign_key: string;
+  status: "draft" | "sent";
+  sent: boolean;
+  subject: string;
+  body: string;
+  preview_text: string | null;
+  cta_label: string | null;
+  cta_url: string | null;
+  target: EmailTargetMode;
+  search: string | null;
+  user_ids?: number[];
+  emails?: string[];
+  sent_at: string | null;
+  recipient_count: number | null;
+  stats?: {
+    queued: number;
+    delivered: number;
+    failed: number;
+    sent: number;
+    link_clicks: number;
+    unique_clickers: number;
+    ctr_rate: number;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface EmailCampaignPayload {
+  name?: string | null;
+  subject: string;
+  body: string;
+  preview_text?: string | null;
+  cta_label?: string | null;
+  cta_url?: string | null;
+  target: EmailTargetMode;
+  search?: string | null;
+  user_ids?: number[];
+  emails?: string[];
+  send_now?: boolean;
+}
+
+export interface EmailCampaignsResponse {
+  success: boolean;
+  data: EmailCampaign[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+const getEmailCampaignErrorMessage = (
+  json: { message?: string; errors?: Record<string, string[]> },
+  fallback: string
+): string => {
+  if (json.message) return json.message;
+  const firstError = json.errors ? Object.values(json.errors).flat()[0] : undefined;
+  return firstError ?? fallback;
+};
+
+export const previewEmailCampaign = async (
+  payload: Pick<EmailCampaignPayload, "target" | "search" | "user_ids" | "emails">
+): Promise<{ recipient_count: number } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/email-campaigns/preview`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getEmailCampaignErrorMessage(json, `Preview failed: ${response.statusText}`)
+      );
+    }
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getEmailCampaigns = async (
+  params: { search?: string; status?: string; page?: number; per_page?: number } = {}
+): Promise<EmailCampaignsResponse | null> => {
+  try {
+    const query = new URLSearchParams();
+    if (params.search) query.set("search", params.search);
+    if (params.status) query.set("status", params.status);
+    if (params.page) query.set("page", String(params.page));
+    if (params.per_page) query.set("per_page", String(params.per_page));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/email-campaigns${query.toString() ? `?${query}` : ""}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getEmailCampaignErrorMessage(json, `Failed to fetch email campaigns: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const createEmailCampaign = async (
+  payload: EmailCampaignPayload
+): Promise<EmailCampaign | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/email-campaigns`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getEmailCampaignErrorMessage(json, `Failed to create email campaign: ${response.statusText}`)
+      );
+    }
+    toast.success(json.message ?? "Email campaign saved");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getEmailCampaign = async (
+  id: number
+): Promise<{ success: boolean; data: EmailCampaign } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/email-campaigns/${id}`);
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getEmailCampaignErrorMessage(json, `Failed to fetch email campaign: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deleteEmailCampaign = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/email-campaigns/${id}`, {
+      method: "DELETE",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getEmailCampaignErrorMessage(json, `Failed to delete email campaign: ${response.statusText}`)
+      );
+    }
+    toast.success("Email campaign deleted");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
+export const sendEmailCampaign = async (
+  id: number
+): Promise<{ queued_count?: number; recipient_count?: number } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/email-campaigns/${id}/send`, {
+      method: "POST",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getEmailCampaignErrorMessage(json, `Failed to queue email campaign: ${response.statusText}`)
+      );
+    }
+    const count = json.data?.queued_count ?? json.data?.recipient_count ?? 0;
+    toast.success(`Queued ${count} email(s)`);
+    return json.data ?? null;
   } catch (error) {
     handleError(error);
     return null;
