@@ -355,6 +355,18 @@ export const getAppTransactions = async (
   }
 };
 
+export const getAppTransaction = async (id: number): Promise<AppTransaction | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/app-transactions/${id}`);
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.message || `Failed to fetch transaction: ${response.statusText}`);
+    return (json.data ?? null) as AppTransaction | null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 // Admin login - first step
 export const loginUser = async (email: string, password: string): Promise<{ needsVerification: boolean; admin?: UserProfile }> => {
   try {

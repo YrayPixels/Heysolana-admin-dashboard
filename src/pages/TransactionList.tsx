@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft,
@@ -143,6 +144,7 @@ function getExplorerUrl(tx: AppTransaction) {
 }
 
 const TransactionList: React.FC = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [cluster, setCluster] = useState<TransactionMetricsCluster>("all");
   const [status, setStatus] = useState("all");
@@ -372,7 +374,8 @@ const TransactionList: React.FC = () => {
                         return (
                           <TableRow
                             key={transaction.id}
-                            className="border-white/5"
+                            className="border-white/5 cursor-pointer hover:bg-white/5"
+                            onClick={() => navigate(`/transaction-list/${transaction.id}`)}
                           >
                             <TableCell>
                               <div className="font-mono text-sm">
@@ -421,6 +424,7 @@ const TransactionList: React.FC = () => {
                                   variant="ghost"
                                   size="sm"
                                   aria-label="Open transaction in Solscan"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   <a
                                     href={explorerUrl}

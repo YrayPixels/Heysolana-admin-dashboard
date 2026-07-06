@@ -300,7 +300,12 @@ const UserDetail = () => {
                               {transactionsData.data.map((tx) => (
                                 <TableRow key={tx.id}>
                                   <TableCell className="capitalize">
-                                    {tx.transaction_type}
+                                    <Link
+                                      to={`/transaction-list/${tx.id}`}
+                                      className="hover:underline"
+                                    >
+                                      {tx.transaction_type}
+                                    </Link>
                                   </TableCell>
                                   <TableCell>
                                     <Badge variant="outline" className="capitalize">
