@@ -1139,6 +1139,8 @@ export interface ProcessingFeeSettings {
   bug_report_email: string;
   /** Email address to notify when users send support chat messages */
   support_inbox_email: string;
+  /** Primary email for admin dashboard alerts (new users, transactions, etc.) */
+  admin_notification_email: string;
   /** Master switch for Hey Points (cashback earn + redeem in wallet). */
   hey_points_enabled: string;
   airtime_cashback_enabled: string;
@@ -1162,6 +1164,80 @@ export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings 
   } catch (error) {
     handleError(error);
     return null;
+  }
+};
+
+// ============ Admin Inbox Notifications ============
+
+export type AdminInboxNotificationType = 'new_user' | 'transaction' | 'support_message';
+
+export interface AdminInboxNotification {
+  id: number;
+  type: AdminInboxNotificationType;
+  title: string;
+  body: string;
+  link: string | null;
+  payload: Record<string, unknown> | null;
+  read_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getAdminInboxNotifications = async (options?: {
+  unreadOnly?: boolean;
+  limit?: number;
+}): Promise<AdminInboxNotification[]> => {
+  try {
+    const params = new URLSearchParams();
+    if (options?.unreadOnly) params.set('unread_only', '1');
+    if (options?.limit) params.set('limit', String(options.limit));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/inbox/notifications${params.toString() ? `?${params.toString()}` : ''}`
+    );
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.message || 'Failed to load notifications');
+    return (json.data ?? []) as AdminInboxNotification[];
+  } catch (error) {
+    handleError(error);
+    return [];
+  }
+};
+
+export const getAdminInboxUnreadCount = async (): Promise<number> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/inbox/notifications/unread-count`
+    );
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.message || 'Failed to load unread count');
+    return json.data?.unread_count ?? 0;
+  } catch {
+    return 0;
+  }
+};
+
+export const markAdminInboxNotificationRead = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/inbox/notifications/${id}/read`,
+      { method: 'PATCH' }
+    );
+    return response.ok;
+  } catch {
+    return false;
+  }
+};
+
+export const markAllAdminInboxNotificationsRead = async (): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/inbox/notifications/mark-all-read`,
+      { method: 'POST' }
+    );
+    return response.ok;
+  } catch {
+    return false;
   }
 };
 
@@ -2367,6 +2443,7 @@ export const updateProcessingFeeSettings = async (
     pajcash_offramp_usdc_fee: number;
     bug_report_email: string;
     support_inbox_email: string;
+    admin_notification_email: string;
     hey_points_enabled?: '0' | '1';
     airtime_cashback_enabled?: '0' | '1';
     airtime_cashback_percent?: number;

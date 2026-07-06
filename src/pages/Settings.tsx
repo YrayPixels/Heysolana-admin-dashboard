@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark } from 'lucide-react';
+import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,8 +30,10 @@ const Settings = () => {
   const [cashbackMinNgn, setCashbackMinNgn] = useState('');
   const [cashbackMaxPoints, setCashbackMaxPoints] = useState('');
   const [heyPointsTreasuryEnabled, setHeyPointsTreasuryEnabled] = useState(true);
+  const [adminNotificationEmail, setAdminNotificationEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingHeyPoints, setSavingHeyPoints] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['processing-fee-settings'],
@@ -55,8 +57,20 @@ const Settings = () => {
       setCashbackMinNgn(settings.airtime_cashback_min_purchase_ngn ?? '');
       setCashbackMaxPoints(settings.airtime_cashback_max_points_per_txn ?? '');
       setHeyPointsTreasuryEnabled((settings.hey_points_treasury_enabled ?? '1') === '1');
+      setAdminNotificationEmail(settings.admin_notification_email ?? '');
     }
   }, [settings]);
+
+  const handleSaveNotifications = async () => {
+    setSavingNotifications(true);
+    const result = await updateProcessingFeeSettings({
+      admin_notification_email: adminNotificationEmail.trim(),
+    });
+    setSavingNotifications(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -135,6 +149,44 @@ const Settings = () => {
             Configure processing fees and the single treasury wallet used for all fees and payments (Jumia USDC, Crossmint, etc.)
           </p>
         </div>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Admin notifications
+            </CardTitle>
+            <CardDescription>
+              Email address for alerts when new users register, transactions are recorded, or support messages arrive. Also shown in the dashboard notification bell.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-10 w-full max-w-md" />
+            ) : (
+              <div className="space-y-4 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="admin-notification-email">Notification email</Label>
+                  <Input
+                    id="admin-notification-email"
+                    type="email"
+                    placeholder="admin@example.com"
+                    value={adminNotificationEmail}
+                    onChange={(e) => setAdminNotificationEmail(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Falls back to support inbox or bug report email if left empty.
+                  </p>
+                </div>
+                <Button onClick={handleSaveNotifications} disabled={savingNotifications} className="w-fit">
+                  <Save className="mr-2 h-4 w-4" />
+                  {savingNotifications ? 'Saving...' : 'Save notification email'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="bg-black/30 border-white/10">
           <CardHeader>

@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Logo from "../../public/logo.png";
+import AdminNotificationBell from "@/components/AdminNotificationBell";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -364,10 +365,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="hidden md:flex"></div>
 
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-solana rounded-full"></span>
-              </Button>
+              <AdminNotificationBell />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
