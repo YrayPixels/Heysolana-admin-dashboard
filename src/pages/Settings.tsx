@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark, Bell } from 'lucide-react';
+import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark, Bell, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,9 +31,13 @@ const Settings = () => {
   const [cashbackMaxPoints, setCashbackMaxPoints] = useState('');
   const [heyPointsTreasuryEnabled, setHeyPointsTreasuryEnabled] = useState(true);
   const [adminNotificationEmail, setAdminNotificationEmail] = useState('');
+  const [emailTwitterUrl, setEmailTwitterUrl] = useState('');
+  const [emailTelegramUrl, setEmailTelegramUrl] = useState('');
+  const [emailCommunityUrl, setEmailCommunityUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingHeyPoints, setSavingHeyPoints] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
+  const [savingEmailSocial, setSavingEmailSocial] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['processing-fee-settings'],
@@ -58,6 +62,9 @@ const Settings = () => {
       setCashbackMaxPoints(settings.airtime_cashback_max_points_per_txn ?? '');
       setHeyPointsTreasuryEnabled((settings.hey_points_treasury_enabled ?? '1') === '1');
       setAdminNotificationEmail(settings.admin_notification_email ?? '');
+      setEmailTwitterUrl(settings.email_twitter_url ?? '');
+      setEmailTelegramUrl(settings.email_telegram_url ?? '');
+      setEmailCommunityUrl(settings.email_community_url ?? '');
     }
   }, [settings]);
 
@@ -67,6 +74,19 @@ const Settings = () => {
       admin_notification_email: adminNotificationEmail.trim(),
     });
     setSavingNotifications(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+    }
+  };
+
+  const handleSaveEmailSocial = async () => {
+    setSavingEmailSocial(true);
+    const result = await updateProcessingFeeSettings({
+      email_twitter_url: emailTwitterUrl.trim(),
+      email_telegram_url: emailTelegramUrl.trim(),
+      email_community_url: emailCommunityUrl.trim(),
+    });
+    setSavingEmailSocial(false);
     if (result) {
       queryClient.setQueryData(['processing-fee-settings'], result);
     }
@@ -182,6 +202,70 @@ const Settings = () => {
                 <Button onClick={handleSaveNotifications} disabled={savingNotifications} className="w-fit">
                   <Save className="mr-2 h-4 w-4" />
                   {savingNotifications ? 'Saving...' : 'Save notification email'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5" />
+              Email & community links
+            </CardTitle>
+            <CardDescription>
+              Social and community URLs shown in welcome emails and other user-facing messages.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4 max-w-md">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="email-twitter-url">Twitter / X URL</Label>
+                  <Input
+                    id="email-twitter-url"
+                    type="url"
+                    placeholder="https://x.com/useOrova"
+                    value={emailTwitterUrl}
+                    onChange={(e) => setEmailTwitterUrl(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email-telegram-url">Telegram URL</Label>
+                  <Input
+                    id="email-telegram-url"
+                    type="url"
+                    placeholder="https://t.me/..."
+                    value={emailTelegramUrl}
+                    onChange={(e) => setEmailTelegramUrl(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email-community-url">Community URL</Label>
+                  <Input
+                    id="email-community-url"
+                    type="url"
+                    placeholder="https://discord.com/invite/..."
+                    value={emailCommunityUrl}
+                    onChange={(e) => setEmailCommunityUrl(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Used for the &quot;Join the Community&quot; button in welcome emails.
+                  </p>
+                </div>
+                <Button onClick={handleSaveEmailSocial} disabled={savingEmailSocial} className="w-fit">
+                  <Save className="mr-2 h-4 w-4" />
+                  {savingEmailSocial ? 'Saving...' : 'Save email links'}
                 </Button>
               </div>
             )}
