@@ -101,14 +101,14 @@ const UserDetail = () => {
   });
 
   const { data: devicesData, isLoading: devicesLoading } = useQuery({
-    queryKey: ['user-devices', user?.phone_number],
+    queryKey: ['user-devices', user?.id],
     queryFn: () =>
       getPushRecipients({
-        phone_number: user!.phone_number,
+        user_id: user!.id,
         active_only: false,
         per_page: 20,
       }),
-    enabled: Boolean(user?.phone_number),
+    enabled: Boolean(user?.id),
   });
 
   const handleCopy = async (value: string, field: string) => {
@@ -123,8 +123,8 @@ const UserDetail = () => {
   };
 
   const handleSendPush = async () => {
-    if (!user?.phone_number) {
-      toast.error('User has no phone number');
+    if (!user?.id && !user?.phone_number) {
+      toast.error('User has no linked account identity for push');
       return;
     }
     if (!notificationTitle.trim() || !notificationBody.trim()) {
@@ -139,7 +139,8 @@ const UserDetail = () => {
         target: 'selected',
         title: notificationTitle.trim(),
         body: notificationBody.trim(),
-        phone_numbers: [user.phone_number],
+        phone_numbers: user.phone_number ? [user.phone_number] : undefined,
+        user_ids: user.id ? [user.id] : undefined,
         active_only: true,
         data: { type: 'admin_user_reminder' },
       });
@@ -228,7 +229,7 @@ const UserDetail = () => {
                   Copy wallet
                 </Button>
               )}
-              {user.phone_number && (user.active_device_count ?? 0) > 0 && (
+              {(user.active_device_count ?? 0) > 0 && (
                 <Button onClick={handleSendPush} disabled={sendingNotification}>
                   <Bell className="mr-2 h-4 w-4" />
                   {sendingNotification ? 'Sending…' : 'Send push'}
@@ -438,7 +439,7 @@ const UserDetail = () => {
                 </TabsContent>
               </Tabs>
 
-              {user.phone_number && (user.active_device_count ?? 0) > 0 && (
+              {(user.active_device_count ?? 0) > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">

@@ -1278,6 +1278,7 @@ export interface PushRecipientsFilters {
   search?: string;
   device_type?: "ios" | "android" | "all";
   phone_number?: string;
+  user_id?: number;
   active_only?: boolean;
   inactive_days?: number;
   page?: number;
@@ -1310,6 +1311,7 @@ export interface AdminSendPushPayload {
   search?: string;
   phone_number?: string;
   phone_numbers?: string[];
+  user_ids?: number[];
   token_ids?: number[];
   active_only?: boolean;
   inactive_days?: number;
@@ -1326,6 +1328,7 @@ export const getPushRecipients = async (
       params.set("device_type", filters.device_type);
     }
     if (filters.phone_number) params.set("phone_number", filters.phone_number);
+    if (filters.user_id) params.set("user_id", String(filters.user_id));
     if (filters.active_only === false) params.set("active_only", "0");
     if (filters.inactive_days) params.set("inactive_days", String(filters.inactive_days));
     if (filters.page) params.set("page", String(filters.page));
