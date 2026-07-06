@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Search, 
@@ -36,6 +37,7 @@ import { getUsers, User, UsersResponse, UsersFilters, sendAdminPush } from '@/se
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const Users = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [walletFilter, setWalletFilter] = useState<string>('all');
@@ -599,7 +601,13 @@ const Users = () => {
                                 {user.username.charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <div className="font-medium">{user.username}</div>
+                                <button
+                                  type="button"
+                                  className="font-medium text-left hover:underline"
+                                  onClick={() => navigate(`/users/${user.id}`)}
+                                >
+                                  {user.username}
+                                </button>
                                 <div className="text-sm text-muted-foreground">ID: {user.id}</div>
                               </div>
                             </div>
@@ -682,7 +690,7 @@ const Users = () => {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/users/${user.id}`)}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Details
                                 </DropdownMenuItem>

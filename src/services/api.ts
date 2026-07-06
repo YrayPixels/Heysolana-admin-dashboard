@@ -638,7 +638,11 @@ export interface User {
   username: string;
   phone_number: string;
   email?: string | null;
+  country?: string | null;
+  google_id?: string | null;
   wallet_address: string;
+  wallet_type?: string | null;
+  mpc_upgraded_at?: string | null;
   pin: string;
   verification_status?: string;
   last_active_at?: string | null;
@@ -790,6 +794,9 @@ export const getUser = async (id: number): Promise<User | null> => {
     
     const data = await response.json();
     console.log("User data:", data);
+    if (data?.status === 'failed') {
+      return null;
+    }
     return data;
   } catch (error) {
     handleError(error);

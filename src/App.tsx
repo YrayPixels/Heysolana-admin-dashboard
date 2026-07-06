@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
 import UserDistribution from "./pages/UserDistribution";
 import Users from "./pages/Users";
+import UserDetail from "./pages/UserDetail";
 import ProfilePage from "./pages/ProfilePage";
 import Orders from "./pages/Orders";
 import Transactions from "./pages/Transactions";
@@ -118,6 +119,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Users />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/users/:id"
+        element={
+          <ProtectedRoute>
+            <UserDetail />
           </ProtectedRoute>
         }
       />
