@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Edit, Mail, Plus, RefreshCw, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { EmailComposeModal } from "@/components/email-campaigns/EmailComposeModal";
 import { EmailStatsCards } from "@/components/email-campaigns/EmailStatsCards";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -29,6 +30,7 @@ import {
 const EmailMessaging = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [composeOpen, setComposeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -71,7 +73,13 @@ const EmailMessaging = () => {
 
   const handleDelete = async (event: React.MouseEvent, campaign: EmailCampaign) => {
     event.stopPropagation();
-    if (!window.confirm(`Delete "${campaign.name ?? campaign.subject}"?`)) return;
+    const ok = await confirm({
+      title: "Delete campaign?",
+      description: `Delete "${campaign.name ?? campaign.subject}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const deleted = await deleteEmailCampaign(campaign.id);
     if (deleted) {
       await queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });

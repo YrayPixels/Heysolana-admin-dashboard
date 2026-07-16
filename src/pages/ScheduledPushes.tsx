@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Edit, Plus, RefreshCw, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +61,7 @@ const targetLabel = (campaign: ScheduledPushCampaign) => {
 const ScheduledPushes = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -86,7 +88,13 @@ const ScheduledPushes = () => {
 
   const handleDelete = async (event: React.MouseEvent, campaign: ScheduledPushCampaign) => {
     event.stopPropagation();
-    if (!window.confirm(`Delete "${campaign.name}"?`)) return;
+    const ok = await confirm({
+      title: "Delete scheduled push?",
+      description: `Delete "${campaign.name}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const deleted = await deleteScheduledPushCampaign(campaign.id);
     if (deleted) {
       await queryClient.invalidateQueries({ queryKey: ["scheduled-pushes"] });

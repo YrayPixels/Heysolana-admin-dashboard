@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +23,7 @@ const NotificationNudgeDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
 
   const nudgeId = id ? Number.parseInt(id, 10) : NaN;
@@ -49,7 +51,14 @@ const NotificationNudgeDetail = () => {
   };
 
   const handleDelete = async () => {
-    if (!nudge || !window.confirm(`Delete "${nudge.headline}"?`)) return;
+    if (!nudge) return;
+    const ok = await confirm({
+      title: "Delete nudge?",
+      description: `Delete "${nudge.headline}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const deleted = await deleteNotificationNudge(nudge.id);
     if (deleted) {
       await queryClient.invalidateQueries({ queryKey: ["notification-nudges"] });

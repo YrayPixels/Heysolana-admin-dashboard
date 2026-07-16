@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Edit, Plus, RefreshCw, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { PushComposeModal } from "@/components/push-campaigns/PushComposeModal";
 import { PushStatsCards } from "@/components/push-campaigns/PushStatsCards";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import {
 const PushNotifications = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [composeOpen, setComposeOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<PushCampaign | null>(null);
   const [saving, setSaving] = useState(false);
@@ -116,7 +118,13 @@ const PushNotifications = () => {
 
   const handleDelete = async (event: React.MouseEvent, campaign: PushCampaign) => {
     event.stopPropagation();
-    if (!window.confirm(`Delete "${campaign.title}"?`)) return;
+    const ok = await confirm({
+      title: "Delete campaign?",
+      description: `Delete "${campaign.title}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const deleted = await deletePushCampaign(campaign.id);
     if (deleted) {
       await queryClient.invalidateQueries({ queryKey: ["push-campaigns"] });

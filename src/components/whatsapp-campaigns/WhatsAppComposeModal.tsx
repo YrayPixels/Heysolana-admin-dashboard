@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ConfirmDialog";
 import {
   getUsers,
   previewWhatsAppCampaign,
@@ -43,10 +44,10 @@ import {
 const emptyForm = {
   messageMode: "template" as WhatsAppMessageMode,
   templateName: "notification",
-  templateLanguage: "en_US",
-  header: "HeySolana",
+  templateLanguage: "en",
+  header: "Orova misses you",
   body: "",
-  appLink: "",
+  appLink: "https://play.google.com/store/apps/details?id=com.maskyray.heysolana",
   search: "",
   targetMode: "filtered" as WhatsAppTargetMode,
   selectedUserIds: [] as number[],
@@ -69,6 +70,7 @@ export const WhatsAppComposeModal = ({
   onSaveDraft,
   onSend,
 }: WhatsAppComposeModalProps) => {
+  const confirm = useConfirm();
   const [messageMode, setMessageMode] = useState<WhatsAppMessageMode>(emptyForm.messageMode);
   const [templateName, setTemplateName] = useState(emptyForm.templateName);
   const [templateLanguage, setTemplateLanguage] = useState(emptyForm.templateLanguage);
@@ -128,9 +130,9 @@ export const WhatsAppComposeModal = ({
       message_mode: messageMode,
       header: messageMode === "template" ? header.trim() : null,
       body: body.trim(),
-      app_link: messageMode === "template" ? appLink.trim() : null,
+      app_link: messageMode === "template" ? appLink.trim() || null : null,
       template_name: messageMode === "template" ? templateName.trim() : null,
-      template_language: messageMode === "template" ? templateLanguage.trim() : null,
+      template_language: messageMode === "template" ? templateLanguage.trim() || "en" : null,
       target: targetMode,
       search: targetMode === "filtered" && debouncedSearch ? debouncedSearch : null,
       user_ids: targetMode === "selected" ? selectedUserIds : undefined,
@@ -208,10 +210,6 @@ export const WhatsAppComposeModal = ({
       toast.error("Message is required");
       return false;
     }
-    if (messageMode === "template" && !appLink.trim()) {
-      toast.error("App link URL variable is required");
-      return false;
-    }
     if (targetMode === "selected" && selectedUserIds.length === 0) {
       toast.error("Select at least one user or switch to filtered / all users");
       return false;
@@ -230,13 +228,12 @@ export const WhatsAppComposeModal = ({
 
   const handleSend = async () => {
     if (!validateCompose()) return;
-    if (
-      !window.confirm(
-        `Queue WhatsApp message for ${preview?.recipient_count ?? "?"} recipient(s)? The worker will process these in the background.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Schedule WhatsApp message?",
+      description: `Schedule WhatsApp message for ${preview?.recipient_count ?? "?"} recipient(s)? Cron will send pending messages in the background.`,
+      confirmLabel: "Schedule",
+    });
+    if (!ok) return;
     await onSend(buildCampaignPayload(true));
   };
 
@@ -284,16 +281,16 @@ export const WhatsAppComposeModal = ({
                   <div className="space-y-2">
                     <Label>Language</Label>
                     <Input
-                      placeholder="en_US"
+                      placeholder="en"
                       value={templateLanguage}
                       onChange={(event) => setTemplateLanguage(event.target.value)}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Header variable</Label>
+                  <Label>Header variable ({`{{header}}`})</Label>
                   <Input
-                    placeholder="HeySolana"
+                    placeholder="Orova misses you"
                     value={header}
                     onChange={(event) => setHeader(event.target.value)}
                   />
@@ -302,11 +299,11 @@ export const WhatsAppComposeModal = ({
             )}
 
             <div className="space-y-2">
-              <Label>{messageMode === "template" ? "Notification message" : "Message"}</Label>
+              <Label>{messageMode === "template" ? "Notification message ({{body}})" : "Message"}</Label>
               <Textarea
                 placeholder={
                   messageMode === "template"
-                    ? "Passed into the notification template body"
+                    ? "Passed into the {{body}} template variable"
                     : "Write your WhatsApp message..."
                 }
                 value={body}
@@ -318,14 +315,15 @@ export const WhatsAppComposeModal = ({
 
             {messageMode === "template" && (
               <div className="space-y-2">
-                <Label>App link URL variable</Label>
+                <Label>Tracking / store link (optional)</Label>
                 <Input
-                  placeholder="https://..."
+                  placeholder="https://play.google.com/store/apps/details?id=com.maskyray.heysolana"
                   value={appLink}
                   onChange={(event) => setAppLink(event.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  A campaign tracking parameter is appended automatically when queued.
+                  Template button is static in Meta. This link is stored for tracking (`wa_campaign`) when
+                  users open via a tracked URL — not sent as a WhatsApp button parameter.
                 </p>
               </div>
             )}
@@ -353,7 +351,7 @@ export const WhatsAppComposeModal = ({
                 disabled={busy || (preview?.recipient_count ?? 0) === 0}
               >
                 <Send className="h-4 w-4 mr-2" />
-                {sending ? "Queueing…" : "Queue messages"}
+                {sending ? "Scheduling…" : "Schedule send"}
               </Button>
             </div>
           </div>

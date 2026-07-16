@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Send, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { EmailStatsCards } from "@/components/email-campaigns/EmailStatsCards";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ const EmailCampaignDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [sending, setSending] = useState(false);
 
   const campaignId = id ? Number.parseInt(id, 10) : NaN;
@@ -38,13 +40,13 @@ const EmailCampaignDetail = () => {
 
   const handleSend = async () => {
     if (!campaign || campaign.sent) return;
-    if (
-      !window.confirm(
-        "Queue emails for matching recipients? The worker will process these in the background."
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Queue emails?",
+      description:
+        "Queue emails for matching recipients? The worker will process these in the background.",
+      confirmLabel: "Queue",
+    });
+    if (!ok) return;
 
     setSending(true);
     try {
@@ -59,7 +61,14 @@ const EmailCampaignDetail = () => {
   };
 
   const handleDelete = async () => {
-    if (!campaign || !window.confirm(`Delete "${campaign.name ?? campaign.subject}"?`)) return;
+    if (!campaign) return;
+    const ok = await confirm({
+      title: "Delete campaign?",
+      description: `Delete "${campaign.name ?? campaign.subject}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const deleted = await deleteEmailCampaign(campaign.id);
     if (deleted) {
       await queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });

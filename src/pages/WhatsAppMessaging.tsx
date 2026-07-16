@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Edit, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { WhatsAppComposeModal } from "@/components/whatsapp-campaigns/WhatsAppComposeModal";
 import { WhatsAppStatsCards } from "@/components/whatsapp-campaigns/WhatsAppStatsCards";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -29,6 +30,7 @@ import {
 const WhatsAppMessaging = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [composeOpen, setComposeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -71,7 +73,13 @@ const WhatsAppMessaging = () => {
 
   const handleDelete = async (event: React.MouseEvent, campaign: WhatsAppCampaign) => {
     event.stopPropagation();
-    if (!window.confirm(`Delete "${campaign.name ?? campaign.body}"?`)) return;
+    const ok = await confirm({
+      title: "Delete campaign?",
+      description: `Delete "${campaign.name ?? campaign.body}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const deleted = await deleteWhatsAppCampaign(campaign.id);
     if (deleted) {
       await queryClient.invalidateQueries({ queryKey: ["whatsapp-campaigns"] });
@@ -89,7 +97,7 @@ const WhatsAppMessaging = () => {
             <div>
               <h1 className="text-2xl font-bold">WhatsApp messaging</h1>
               <p className="text-muted-foreground text-sm">
-                Compose, queue, and track WhatsApp notification campaigns
+                Compose, schedule, and track WhatsApp notification campaigns
               </p>
             </div>
           </div>
@@ -107,10 +115,11 @@ const WhatsAppMessaging = () => {
 
         <Alert className="border-green-500/30 bg-green-500/10">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Queued delivery</AlertTitle>
+          <AlertTitle>Cron delivery</AlertTitle>
           <AlertDescription>
-            Campaigns are queued for background delivery. The Laravel queue worker must be running
-            for messages to actually send.
+            Scheduling a campaign creates pending recipient rows. Run{" "}
+            <code className="text-xs">whatsapp:process-pending</code> (or hit the cron endpoint) to send
+            them via Meta — no queue worker required.
           </AlertDescription>
         </Alert>
 
@@ -119,7 +128,7 @@ const WhatsAppMessaging = () => {
             <Card className="glass-morphism border-emerald-500/30">
               <CardContent className="py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                  <Badge className="mb-2 bg-emerald-500/20 text-emerald-300">Latest queued</Badge>
+                  <Badge className="mb-2 bg-emerald-500/20 text-emerald-300">Latest scheduled</Badge>
                   <p className="font-semibold">{latestSent.name ?? latestSent.header ?? latestSent.body}</p>
                   <p className="text-sm text-muted-foreground">
                     {latestSent.sent_at
@@ -140,7 +149,7 @@ const WhatsAppMessaging = () => {
           <CardHeader>
             <CardTitle>All campaigns</CardTitle>
             <CardDescription>
-              Click a row to view delivery stats and details. Drafts can be queued from the detail page.
+              Click a row to view delivery stats and details. Drafts can be scheduled from the detail page.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -177,7 +186,7 @@ const WhatsAppMessaging = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant={campaign.sent ? "default" : "outline"}>
-                          {campaign.sent ? "Queued" : "Draft"}
+                          {campaign.sent ? "Scheduled" : "Draft"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm capitalize">{campaign.message_mode}</TableCell>
@@ -191,12 +200,12 @@ const WhatsAppMessaging = () => {
                       <TableCell>
                         {campaign.sent ? (
                           <div className="grid gap-1 text-xs text-muted-foreground">
-                            <span>Queued: {campaign.stats?.sent ?? campaign.recipient_count ?? 0}</span>
-                            <span>Delivered: {campaign.stats?.delivered ?? 0}</span>
+                            <span>Pending: {campaign.stats?.queued ?? 0}</span>
+                            <span>Sent: {campaign.stats?.delivered ?? 0}</span>
                             <span>CTR: {campaign.stats?.ctr_rate ?? 0}%</span>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Not queued</span>
+                          <span className="text-xs text-muted-foreground">Not scheduled</span>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">

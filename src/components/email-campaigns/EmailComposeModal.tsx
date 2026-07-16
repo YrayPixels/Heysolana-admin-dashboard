@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ConfirmDialog";
 import {
   EmailCampaignPayload,
   EmailTargetMode,
@@ -67,6 +68,7 @@ export const EmailComposeModal = ({
   onSaveDraft,
   onSend,
 }: EmailComposeModalProps) => {
+  const confirm = useConfirm();
   const [subject, setSubject] = useState(emptyForm.subject);
   const [body, setBody] = useState(emptyForm.body);
   const [previewText, setPreviewText] = useState(emptyForm.previewText);
@@ -212,13 +214,12 @@ export const EmailComposeModal = ({
 
   const handleSend = async () => {
     if (!validateCompose()) return;
-    if (
-      !window.confirm(
-        `Queue email for ${preview?.recipient_count ?? "?"} recipient(s)? The worker will process these in the background.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Queue email?",
+      description: `Queue email for ${preview?.recipient_count ?? "?"} recipient(s)? The worker will process these in the background.`,
+      confirmLabel: "Queue",
+    });
+    if (!ok) return;
     await onSend(buildCampaignPayload(true));
   };
 

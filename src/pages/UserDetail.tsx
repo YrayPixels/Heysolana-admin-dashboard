@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { useConfirm } from '@/components/ConfirmDialog';
 import {
   getUser,
   getAppTransactions,
@@ -66,6 +67,7 @@ function getStatusBadge(status: string | undefined) {
 const UserDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const userId = id ? parseInt(id, 10) : NaN;
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [notificationTitle, setNotificationTitle] = useState('We miss you on HeySolana');
@@ -131,7 +133,12 @@ const UserDetail = () => {
       toast.error('Notification title and message are required');
       return;
     }
-    if (!window.confirm(`Send push notification to ${user.username}?`)) return;
+    const ok = await confirm({
+      title: "Send push notification?",
+      description: `Send push notification to ${user.username}?`,
+      confirmLabel: "Send",
+    });
+    if (!ok) return;
 
     setSendingNotification(true);
     try {

@@ -25,10 +25,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { fetchAdmins, createAdmin, resetAdminPassword, UserProfile } from '@/services/api';
 
 const Admins = () => {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -69,16 +71,19 @@ const Admins = () => {
   };
 
   const handleResetPassword = async (admin: UserProfile) => {
-    const confirmed = window.confirm(
-      `Reset password for ${admin.email}?\n\nThis will generate a new temporary password and email it to them.`
-    );
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: "Reset password?",
+      description: `Reset password for ${admin.email}?\n\nThis will generate a new temporary password and email it to them.`,
+      confirmLabel: "Reset password",
+      variant: "destructive",
+    });
+    if (!ok) return;
 
     setResettingId(admin.id);
-    const ok = await resetAdminPassword(admin.id);
+    const reset = await resetAdminPassword(admin.id);
     setResettingId(null);
 
-    if (ok) {
+    if (reset) {
       toast.success(`New password emailed to ${admin.email}`);
     }
   };

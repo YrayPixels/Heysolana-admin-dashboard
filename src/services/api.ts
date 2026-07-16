@@ -2032,6 +2032,7 @@ export interface WhatsAppCampaign {
     failed: number;
     sent: number;
     link_clicks: number;
+    replies?: number;
     unique_clickers: number;
     ctr_rate: number;
   };
@@ -2192,11 +2193,11 @@ export const sendWhatsAppCampaign = async (
     const json = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(
-        getWhatsAppCampaignErrorMessage(json, `Failed to queue WhatsApp campaign: ${response.statusText}`)
+        getWhatsAppCampaignErrorMessage(json, `Failed to schedule WhatsApp campaign: ${response.statusText}`)
       );
     }
     const count = json.data?.queued_count ?? json.data?.recipient_count ?? 0;
-    toast.success(`Queued ${count} WhatsApp message(s)`);
+    toast.success(`Scheduled ${count} WhatsApp message(s) for cron send`);
     return json.data ?? null;
   } catch (error) {
     handleError(error);

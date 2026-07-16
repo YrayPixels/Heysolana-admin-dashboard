@@ -33,11 +33,13 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import DashboardLayout from '@/layouts/DashboardLayout';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { getUsers, User, UsersResponse, UsersFilters, sendAdminPush } from '@/services/api';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const Users = () => {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [walletFilter, setWalletFilter] = useState<string>('all');
@@ -147,9 +149,12 @@ const Users = () => {
       toast.error('Notification title and message are required');
       return;
     }
-    if (!window.confirm(`Send reminder to ${phoneNumbers.length} selected user(s)?`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Send reminder?",
+      description: `Send reminder to ${phoneNumbers.length} selected user(s)?`,
+      confirmLabel: "Send",
+    });
+    if (!ok) return;
 
     setSendingNotification(true);
     try {

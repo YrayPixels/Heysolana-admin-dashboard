@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Send, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { WhatsAppStatsCards } from "@/components/whatsapp-campaigns/WhatsAppStatsCards";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ const WhatsAppCampaignDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [sending, setSending] = useState(false);
 
   const campaignId = id ? Number.parseInt(id, 10) : NaN;
@@ -38,13 +40,13 @@ const WhatsAppCampaignDetail = () => {
 
   const handleSend = async () => {
     if (!campaign || campaign.sent) return;
-    if (
-      !window.confirm(
-        "Queue WhatsApp messages for matching recipients? The worker will process these in the background."
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Schedule WhatsApp messages?",
+      description:
+        "Schedule WhatsApp messages for matching recipients? Cron will process pending sends.",
+      confirmLabel: "Schedule",
+    });
+    if (!ok) return;
 
     setSending(true);
     try {
@@ -59,7 +61,14 @@ const WhatsAppCampaignDetail = () => {
   };
 
   const handleDelete = async () => {
-    if (!campaign || !window.confirm(`Delete "${campaign.name ?? campaign.body}"?`)) return;
+    if (!campaign) return;
+    const ok = await confirm({
+      title: "Delete campaign?",
+      description: `Delete "${campaign.name ?? campaign.body}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const deleted = await deleteWhatsAppCampaign(campaign.id);
     if (deleted) {
       await queryClient.invalidateQueries({ queryKey: ["whatsapp-campaigns"] });
@@ -103,7 +112,7 @@ const WhatsAppCampaignDetail = () => {
                   </h1>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Badge variant={campaign?.sent ? "default" : "outline"}>
-                      {campaign?.sent ? "Queued" : "Draft"}
+                      {campaign?.sent ? "Scheduled" : "Draft"}
                     </Badge>
                     <Badge variant="outline">{campaign?.message_mode}</Badge>
                     {campaign?.campaign_key ? (
@@ -122,7 +131,7 @@ const WhatsAppCampaignDetail = () => {
                 disabled={sending || isLoading}
               >
                 <Send className="h-4 w-4 mr-2" />
-                {sending ? "Queueing…" : "Queue now"}
+                {sending ? "Scheduling…" : "Schedule send"}
               </Button>
             ) : null}
             <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
@@ -139,8 +148,8 @@ const WhatsAppCampaignDetail = () => {
             <CardTitle>Message</CardTitle>
             <CardDescription>
               {campaign?.sent && campaign.sent_at
-                ? `Queued ${new Date(campaign.sent_at).toLocaleString()} for ${campaign.recipient_count ?? 0} recipient(s)`
-                : "Draft — not queued yet"}
+                ? `Scheduled ${new Date(campaign.sent_at).toLocaleString()} for ${campaign.recipient_count ?? 0} recipient(s)`
+                : "Draft — not scheduled yet"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -186,7 +195,7 @@ const WhatsAppCampaignDetail = () => {
                 </div>
                 {campaign?.sent && (campaign.stats?.failed ?? 0) > 0 ? (
                   <p className="text-sm text-amber-400">
-                    {campaign.stats?.failed} message(s) failed delivery. Check queue worker logs.
+                    {campaign.stats?.failed} message(s) failed. Check logs or retry pending via cron.
                   </p>
                 ) : null}
               </>

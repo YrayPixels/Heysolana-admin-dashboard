@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ConfirmDialog";
 import {
   getPushRecipients,
   previewAdminPush,
@@ -83,6 +84,7 @@ export const PushComposeModal = ({
   onSaveDraft,
   onSend,
 }: PushComposeModalProps) => {
+  const confirm = useConfirm();
   const isEditing = Boolean(campaign);
   const [title, setTitle] = useState(emptyForm.title);
   const [body, setBody] = useState(emptyForm.body);
@@ -234,13 +236,13 @@ export const PushComposeModal = ({
 
   const handleSend = async () => {
     if (!validateCompose()) return;
-    if (
-      !window.confirm(
-        `Send push to ${preview?.device_count ?? "?"} device(s)? This cannot be undone.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Send push notification?",
+      description: `Send push to ${preview?.device_count ?? "?"} device(s)? This cannot be undone.`,
+      confirmLabel: "Send",
+      variant: "destructive",
+    });
+    if (!ok) return;
     await onSend(buildCampaignPayload(true));
   };
 
