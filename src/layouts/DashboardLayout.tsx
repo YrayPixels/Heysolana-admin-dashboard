@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import {
+  AppWindow,
   BarChart3,
   Bell,
   Bug,
@@ -99,6 +100,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Notification nudges",
       icon: <Megaphone className="h-5 w-5" />,
       path: "/notification-nudges",
+    },
+    {
+      name: "Apps",
+      icon: <AppWindow className="h-5 w-5" />,
+      path: "/apps",
     },
     {
       name: "WhatsApp messaging",

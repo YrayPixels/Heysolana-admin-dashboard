@@ -27,6 +27,8 @@ import ScheduledPushes from "./pages/ScheduledPushes";
 import ScheduledPushDetail from "./pages/ScheduledPushDetail";
 import NotificationNudges from "./pages/NotificationNudges";
 import NotificationNudgeDetail from "./pages/NotificationNudgeDetail";
+import Apps from "./pages/Apps";
+import AppDetail from "./pages/AppDetail";
 import WhatsAppMessaging from "./pages/WhatsAppMessaging";
 import WhatsAppCampaignDetail from "./pages/WhatsAppCampaignDetail";
 import EmailMessaging from "./pages/EmailMessaging";
@@ -266,6 +268,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <NotificationNudgeDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/apps"
+        element={
+          <ProtectedRoute>
+            <Apps />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/apps/:id"
+        element={
+          <ProtectedRoute>
+            <AppDetail />
           </ProtectedRoute>
         }
       />

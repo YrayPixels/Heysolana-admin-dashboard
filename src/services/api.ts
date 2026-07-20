@@ -3032,3 +3032,295 @@ export const searchSupportUsers = async (
   }
 };
 
+// ============ App Registrations (Admin) ============
+
+export type AppRegistrationStatus = "draft" | "published" | "disabled";
+
+export interface AppToolParamOption {
+  value: string;
+  name: string;
+}
+
+export interface AppToolParam {
+  name: string;
+  type: string;
+  label?: string;
+  placeholder?: string;
+  helper?: string;
+  optional?: boolean;
+  secure?: boolean;
+  multiline?: boolean;
+  options?: AppToolParamOption[];
+}
+
+export interface AppToolAction {
+  type?: string;
+  route?: string;
+  action_id?: string;
+  params?: AppToolParam[];
+}
+
+export interface AppToolDefinition {
+  name: string;
+  params?: AppToolParam[];
+  action?: AppToolAction | null;
+}
+
+export interface AppRegistration {
+  id: number;
+  slug: string;
+  name: string;
+  category: string;
+  short_description: string | null;
+  description: string | null;
+  website_url: string | null;
+  tutorial_url: string | null;
+  dashboard_route: string | null;
+  icon_url: string | null;
+  banner_url: string | null;
+  icon_path?: string | null;
+  banner_path?: string | null;
+  tags: string[];
+  description_images: string[];
+  brand_colors: { primary?: string; secondary?: string } | null;
+  tools: AppToolDefinition[];
+  capability_ids: string[];
+  status: AppRegistrationStatus;
+  is_featured: boolean;
+  is_new: boolean;
+  sort_order: number;
+  ratings: number;
+  minimum_client_version: string | null;
+  platforms: string[];
+  published_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AppRegistrationPayload {
+  slug?: string;
+  name: string;
+  category: string;
+  short_description?: string | null;
+  description?: string | null;
+  website_url?: string | null;
+  tutorial_url?: string | null;
+  dashboard_route?: string | null;
+  icon_url?: string | null;
+  banner_url?: string | null;
+  tags?: string[];
+  description_images?: string[];
+  brand_colors?: { primary?: string; secondary?: string } | null;
+  tools?: AppToolDefinition[];
+  capability_ids?: string[];
+  status?: AppRegistrationStatus;
+  is_featured?: boolean;
+  is_new?: boolean;
+  sort_order?: number;
+  ratings?: number;
+  minimum_client_version?: string | null;
+  platforms?: string[];
+}
+
+export interface AppRegistrationsResponse {
+  success: boolean;
+  data: AppRegistration[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+const getAppRegistrationErrorMessage = (
+  json: { message?: string; errors?: Record<string, string[]> },
+  fallback: string
+) => {
+  const firstValidationError = json.errors
+    ? Object.values(json.errors).flat().find(Boolean)
+    : null;
+  return firstValidationError || json.message || fallback;
+};
+
+export const getAppRegistrations = async (
+  filters: {
+    search?: string;
+    status?: AppRegistrationStatus;
+    category?: string;
+    page?: number;
+    per_page?: number;
+  } = {}
+): Promise<AppRegistrationsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.search) params.set("search", filters.search);
+    if (filters.status) params.set("status", filters.status);
+    if (filters.category) params.set("category", filters.category);
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/apps${params.toString() ? `?${params.toString()}` : ""}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getAppRegistrationErrorMessage(json, `Failed to fetch apps: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const createAppRegistration = async (
+  payload: AppRegistrationPayload
+): Promise<AppRegistration | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/apps`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getAppRegistrationErrorMessage(json, `Failed to create app: ${response.statusText}`)
+      );
+    }
+    toast.success("App registration created");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getAppRegistration = async (
+  id: number
+): Promise<{ success: boolean; data: AppRegistration } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/apps/${id}`);
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getAppRegistrationErrorMessage(json, `Failed to fetch app: ${response.statusText}`)
+      );
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateAppRegistration = async (
+  id: number,
+  payload: AppRegistrationPayload
+): Promise<AppRegistration | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/apps/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getAppRegistrationErrorMessage(json, `Failed to update app: ${response.statusText}`)
+      );
+    }
+    toast.success("App registration updated");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deleteAppRegistration = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/apps/${id}`, {
+      method: "DELETE",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getAppRegistrationErrorMessage(json, `Failed to delete app: ${response.statusText}`)
+      );
+    }
+    toast.success("App registration deleted");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
+export const publishAppRegistration = async (id: number): Promise<AppRegistration | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/apps/${id}/publish`, {
+      method: "POST",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getAppRegistrationErrorMessage(json, `Failed to publish app: ${response.statusText}`)
+      );
+    }
+    toast.success("App published");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const disableAppRegistration = async (id: number): Promise<AppRegistration | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/apps/${id}/disable`, {
+      method: "POST",
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getAppRegistrationErrorMessage(json, `Failed to disable app: ${response.statusText}`)
+      );
+    }
+    toast.success("App disabled");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const uploadAppRegistrationAsset = async (
+  id: number,
+  kind: "icon" | "banner",
+  file: File
+): Promise<AppRegistration | null> => {
+  try {
+    const formData = new FormData();
+    formData.append("kind", kind);
+    formData.append("file", file);
+
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/apps/${id}/assets`, {
+      method: "POST",
+      body: formData,
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getAppRegistrationErrorMessage(json, `Failed to upload ${kind}: ${response.statusText}`)
+      );
+    }
+    toast.success(`${kind === "icon" ? "Icon" : "Banner"} uploaded`);
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
