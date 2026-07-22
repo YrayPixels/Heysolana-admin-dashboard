@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Edit, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Edit, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { WhatsAppComposeModal } from "@/components/whatsapp-campaigns/WhatsAppComposeModal";
 import { WhatsAppStatsCards } from "@/components/whatsapp-campaigns/WhatsAppStatsCards";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,7 +96,7 @@ const WhatsAppMessaging = () => {
             <div>
               <h1 className="text-2xl font-bold">WhatsApp messaging</h1>
               <p className="text-muted-foreground text-sm">
-                Compose, schedule, and track WhatsApp notification campaigns
+                Compose, send, and track WhatsApp notification campaigns
               </p>
             </div>
           </div>
@@ -113,22 +112,12 @@ const WhatsAppMessaging = () => {
           </div>
         </div>
 
-        <Alert className="border-green-500/30 bg-green-500/10">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Cron delivery</AlertTitle>
-          <AlertDescription>
-            Scheduling a campaign creates pending recipient rows. Run{" "}
-            <code className="text-xs">whatsapp:process-pending</code> (or hit the cron endpoint) to send
-            them via Meta — no queue worker required.
-          </AlertDescription>
-        </Alert>
-
         {latestSent ? (
           <div className="space-y-4">
             <Card className="glass-morphism border-emerald-500/30">
               <CardContent className="py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                  <Badge className="mb-2 bg-emerald-500/20 text-emerald-300">Latest scheduled</Badge>
+                  <Badge className="mb-2 bg-emerald-500/20 text-emerald-300">Latest sent</Badge>
                   <p className="font-semibold">{latestSent.name ?? latestSent.header ?? latestSent.body}</p>
                   <p className="text-sm text-muted-foreground">
                     {latestSent.sent_at
@@ -149,7 +138,7 @@ const WhatsAppMessaging = () => {
           <CardHeader>
             <CardTitle>All campaigns</CardTitle>
             <CardDescription>
-              Click a row to view delivery stats and details. Drafts can be scheduled from the detail page.
+              Click a row to view delivery stats and details. Drafts can be sent from the detail page.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -186,7 +175,7 @@ const WhatsAppMessaging = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant={campaign.sent ? "default" : "outline"}>
-                          {campaign.sent ? "Scheduled" : "Draft"}
+                          {campaign.sent ? "Sent" : "Draft"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm capitalize">{campaign.message_mode}</TableCell>
@@ -205,7 +194,7 @@ const WhatsAppMessaging = () => {
                             <span>CTR: {campaign.stats?.ctr_rate ?? 0}%</span>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Not scheduled</span>
+                          <span className="text-xs text-muted-foreground">Not sent</span>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">

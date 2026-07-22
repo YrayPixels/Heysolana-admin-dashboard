@@ -229,9 +229,9 @@ export const WhatsAppComposeModal = ({
   const handleSend = async () => {
     if (!validateCompose()) return;
     const ok = await confirm({
-      title: "Schedule WhatsApp message?",
-      description: `Schedule WhatsApp message for ${preview?.recipient_count ?? "?"} recipient(s)? Cron will send pending messages in the background.`,
-      confirmLabel: "Schedule",
+      title: "Send WhatsApp message now?",
+      description: `Send WhatsApp message to ${preview?.recipient_count ?? "?"} recipient(s) immediately via Meta?`,
+      confirmLabel: "Send now",
     });
     if (!ok) return;
     await onSend(buildCampaignPayload(true));
@@ -245,7 +245,7 @@ export const WhatsAppComposeModal = ({
         <DialogHeader>
           <DialogTitle>Compose WhatsApp message</DialogTitle>
           <DialogDescription>
-            Choose recipients, write your message, then save as draft or queue for delivery.
+            Choose recipients, write your message, then save as draft or send now.
           </DialogDescription>
         </DialogHeader>
 
@@ -351,7 +351,7 @@ export const WhatsAppComposeModal = ({
                 disabled={busy || (preview?.recipient_count ?? 0) === 0}
               >
                 <Send className="h-4 w-4 mr-2" />
-                {sending ? "Scheduling…" : "Schedule send"}
+                {sending ? "Sending…" : "Send now"}
               </Button>
             </div>
           </div>
@@ -477,8 +477,8 @@ export const WhatsAppComposeModal = ({
               </>
             ) : (
               <p className="text-sm text-muted-foreground rounded-lg border border-white/10 p-4">
-                This message will be queued for every user with a registered phone number. Use
-                filtered or selected mode to narrow the audience.
+                This message will go to every user with a registered phone number. Use filtered or
+                selected mode to narrow the audience.
               </p>
             )}
           </div>

@@ -41,10 +41,9 @@ const WhatsAppCampaignDetail = () => {
   const handleSend = async () => {
     if (!campaign || campaign.sent) return;
     const ok = await confirm({
-      title: "Schedule WhatsApp messages?",
-      description:
-        "Schedule WhatsApp messages for matching recipients? Cron will process pending sends.",
-      confirmLabel: "Schedule",
+      title: "Send WhatsApp messages now?",
+      description: "Send WhatsApp messages to matching recipients immediately via Meta?",
+      confirmLabel: "Send now",
     });
     if (!ok) return;
 
@@ -112,7 +111,7 @@ const WhatsAppCampaignDetail = () => {
                   </h1>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Badge variant={campaign?.sent ? "default" : "outline"}>
-                      {campaign?.sent ? "Scheduled" : "Draft"}
+                      {campaign?.sent ? "Sent" : "Draft"}
                     </Badge>
                     <Badge variant="outline">{campaign?.message_mode}</Badge>
                     {campaign?.campaign_key ? (
@@ -131,7 +130,7 @@ const WhatsAppCampaignDetail = () => {
                 disabled={sending || isLoading}
               >
                 <Send className="h-4 w-4 mr-2" />
-                {sending ? "Scheduling…" : "Schedule send"}
+                {sending ? "Sending…" : "Send now"}
               </Button>
             ) : null}
             <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
@@ -148,8 +147,8 @@ const WhatsAppCampaignDetail = () => {
             <CardTitle>Message</CardTitle>
             <CardDescription>
               {campaign?.sent && campaign.sent_at
-                ? `Scheduled ${new Date(campaign.sent_at).toLocaleString()} for ${campaign.recipient_count ?? 0} recipient(s)`
-                : "Draft — not scheduled yet"}
+                ? `Sent ${new Date(campaign.sent_at).toLocaleString()} to ${campaign.recipient_count ?? 0} recipient(s)`
+                : "Draft — not sent yet"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -195,7 +194,7 @@ const WhatsAppCampaignDetail = () => {
                 </div>
                 {campaign?.sent && (campaign.stats?.failed ?? 0) > 0 ? (
                   <p className="text-sm text-amber-400">
-                    {campaign.stats?.failed} message(s) failed. Check logs or retry pending via cron.
+                    {campaign.stats?.failed} message(s) failed. Check logs for details.
                   </p>
                 ) : null}
               </>

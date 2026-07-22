@@ -2185,7 +2185,13 @@ export const deleteWhatsAppCampaign = async (id: number): Promise<boolean> => {
 
 export const sendWhatsAppCampaign = async (
   id: number
-): Promise<{ queued_count: number; recipient_count: number } | null> => {
+): Promise<{
+  queued_count: number;
+  recipient_count: number;
+  processed?: number;
+  sent?: number;
+  failed?: number;
+} | null> => {
   try {
     const response = await authenticatedFetch(`${API_BASE_URL}/admin/whatsapp-campaigns/${id}/send`, {
       method: "POST",
@@ -2193,11 +2199,10 @@ export const sendWhatsAppCampaign = async (
     const json = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(
-        getWhatsAppCampaignErrorMessage(json, `Failed to schedule WhatsApp campaign: ${response.statusText}`)
+        getWhatsAppCampaignErrorMessage(json, `Failed to send WhatsApp campaign: ${response.statusText}`)
       );
     }
-    const count = json.data?.queued_count ?? json.data?.recipient_count ?? 0;
-    toast.success(`Scheduled ${count} WhatsApp message(s) for cron send`);
+    toast.success(json.message ?? "WhatsApp campaign sent");
     return json.data ?? null;
   } catch (error) {
     handleError(error);
