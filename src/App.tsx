@@ -21,6 +21,7 @@ import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import Settings from "./pages/Settings";
 import Admins from "./pages/Admins";
 import PushNotifications from "./pages/PushNotifications";
+import PushQueue from "./pages/PushQueue";
 import PushCampaignDetail from "./pages/PushCampaignDetail";
 import ScheduledPushes from "./pages/ScheduledPushes";
 import ScheduledPushDetail from "./pages/ScheduledPushDetail";
@@ -211,6 +212,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <PushNotifications />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/push-queue"
+        element={
+          <ProtectedRoute>
+            <PushQueue />
           </ProtectedRoute>
         }
       />

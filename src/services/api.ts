@@ -1372,7 +1372,12 @@ export const previewAdminPush = async (
 
 export const sendAdminPush = async (
   payload: AdminSendPushPayload
-): Promise<{ sent_count: number; device_count: number } | null> => {
+): Promise<{
+  sent_count: number;
+  queued_count: number;
+  device_count: number;
+  batch_key?: string;
+} | null> => {
   try {
     const response = await authenticatedFetch(
       `${API_BASE_URL}/admin/notifications/send`,
@@ -1388,10 +1393,22 @@ export const sendAdminPush = async (
     if (!response.ok) {
       throw new Error(json.message || `Send failed: ${response.statusText}`);
     }
-    toast.success(`Sent to ${json.sent_count ?? 0} device(s)`);
+
+    const queuedCount = Number(json.queued_count ?? 0);
+    const sentCount = Number(json.sent_count ?? 0);
+    const deviceCount = Number(json.device_count ?? 0) || queuedCount || sentCount;
+
+    if (queuedCount > 0) {
+      toast.success(`Queued for ${queuedCount} device(s) — cron will deliver shortly`);
+    } else {
+      toast.success(`Sent to ${sentCount} device(s)`);
+    }
+
     return {
-      sent_count: json.sent_count ?? 0,
-      device_count: json.device_count ?? 0,
+      sent_count: sentCount,
+      queued_count: queuedCount,
+      device_count: deviceCount,
+      batch_key: json.batch_key,
     };
   } catch (error) {
     handleError(error);
@@ -1866,6 +1883,118 @@ export interface PushCampaignsResponse {
   };
 }
 
+export type PushQueueStatus = "queued" | "sent" | "failed";
+
+export interface PushQueueItem {
+  id: number;
+  batch_key: string;
+  push_campaign_id: number | null;
+  title: string;
+  body: string;
+  phone_number: string | null;
+  user_id: number | null;
+  eas_project_id: string | null;
+  push_token_preview: string;
+  status: PushQueueStatus;
+  error_message: string | null;
+  sent_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PushQueueStats {
+  queued: number;
+  sent: number;
+  failed: number;
+  total: number;
+  batch_size: number;
+  recent_failures: Array<{
+    id: number;
+    batch_key: string;
+    title: string;
+    error_message: string | null;
+    updated_at: string | null;
+  }>;
+}
+
+export interface PushQueueListResponse {
+  success: boolean;
+  data: PushQueueItem[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+export const getPushQueueStats = async (): Promise<PushQueueStats | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/push-queue/stats`);
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(json.message || `Failed to fetch push queue stats: ${response.statusText}`);
+    }
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getPushQueueItems = async (
+  filters: {
+    status?: PushQueueStatus | "all";
+    search?: string;
+    batch_key?: string;
+    push_campaign_id?: number;
+    page?: number;
+    per_page?: number;
+  } = {}
+): Promise<PushQueueListResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.status && filters.status !== "all") params.set("status", filters.status);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.batch_key) params.set("batch_key", filters.batch_key);
+    if (filters.push_campaign_id) params.set("push_campaign_id", String(filters.push_campaign_id));
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/push-queue${params.toString() ? `?${params.toString()}` : ""}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(json.message || `Failed to fetch push queue: ${response.statusText}`);
+    }
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const processPushQueue = async (
+  limit?: number
+): Promise<{ processed: number; sent: number; failed: number; remaining: number } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/push-queue/process`, {
+      method: "POST",
+      body: JSON.stringify(limit ? { limit } : {}),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(json.message || `Failed to process push queue: ${response.statusText}`);
+    }
+    toast.success(json.message ?? "Push queue processed");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 const getPushCampaignErrorMessage = (
   json: { message?: string; errors?: Record<string, string[]> },
   fallback: string
@@ -1997,8 +2126,13 @@ export const sendPushCampaign = async (
         getPushCampaignErrorMessage(json, `Failed to send push campaign: ${response.statusText}`)
       );
     }
+    const queued = json.data?.queued_count ?? 0;
     const sent = json.data?.sent_count ?? json.data?.device_count ?? 0;
-    toast.success(`Sent to ${sent} device(s)`);
+    if (queued > 0) {
+      toast.success(`Queued for ${queued} device(s) — cron will deliver shortly`);
+    } else {
+      toast.success(`Sent to ${sent} device(s)`);
+    }
     return json.data ?? null;
   } catch (error) {
     handleError(error);

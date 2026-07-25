@@ -8,6 +8,7 @@ import {
   ChevronFirst,
   ChevronLast,
   Headphones,
+  ListOrdered,
   LogOut,
   Menu,
   MessageCircle,
@@ -83,6 +84,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Push notifications",
       icon: <Bell className="h-5 w-5" />,
       path: "/push-notifications",
+    },
+    {
+      name: "Push queue",
+      icon: <ListOrdered className="h-5 w-5" />,
+      path: "/push-queue",
     },
     {
       name: "Scheduled pushes",
