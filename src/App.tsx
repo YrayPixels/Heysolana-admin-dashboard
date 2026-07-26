@@ -18,6 +18,7 @@ import TransactionList from "./pages/TransactionList";
 import TransactionDetail from "./pages/TransactionDetail";
 import JumiaOrderDetail from "./pages/JumiaOrderDetail";
 import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
+import ChowdeckOrderDetail from "./pages/ChowdeckOrderDetail";
 import Settings from "./pages/Settings";
 import Admins from "./pages/Admins";
 import PushNotifications from "./pages/PushNotifications";
@@ -187,6 +188,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <CrossmintOrderDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/orders/chowdeck/:orderId"
+        element={
+          <ProtectedRoute>
+            <ChowdeckOrderDetail />
           </ProtectedRoute>
         }
       />
