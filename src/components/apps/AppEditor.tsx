@@ -426,7 +426,9 @@ export const AppEditor = ({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ratings">Ratings</Label>
+            <Label htmlFor="ratings">
+              Ratings {app ? "(seed until reviews exist)" : "(initial seed)"}
+            </Label>
             <Input
               id="ratings"
               type="number"
@@ -436,6 +438,12 @@ export const AppEditor = ({
               value={form.ratings}
               onChange={(e) => update("ratings", e.target.value)}
             />
+            {app ? (
+              <p className="text-xs text-muted-foreground">
+                Live: {Number(app.ratings ?? 0).toFixed(1)} avg · {app.review_count ?? 0} reviews ·{" "}
+                {app.user_count ?? 0} installs
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="minimum_client_version">Minimum client version</Label>

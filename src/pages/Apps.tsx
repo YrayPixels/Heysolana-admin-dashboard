@@ -175,6 +175,7 @@ const Apps = () => {
                     <TableHead>Slug</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Engagement</TableHead>
                     <TableHead>Flags</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -209,6 +210,10 @@ const Apps = () => {
                       <TableCell>{app.category}</TableCell>
                       <TableCell>
                         <Badge variant={statusVariant(app.status)}>{app.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {Number(app.ratings ?? 0).toFixed(1)} ★ · {app.user_count ?? 0} users ·{" "}
+                        {app.review_count ?? 0} reviews
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
