@@ -135,6 +135,12 @@ const AppDetail = () => {
                     {app?.status ? <Badge variant="outline">{app.status}</Badge> : null}
                     {app?.slug ? <Badge variant="outline">{app.slug}</Badge> : null}
                     {app?.category ? <Badge variant="outline">{app.category}</Badge> : null}
+                    {app ? (
+                      <Badge variant="outline">
+                        {Number(app.ratings ?? 0).toFixed(1)} ★ · {app.user_count ?? 0} users ·{" "}
+                        {app.review_count ?? 0} reviews
+                      </Badge>
+                    ) : null}
                   </div>
                 </>
               )}

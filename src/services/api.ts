@@ -3242,6 +3242,8 @@ export interface AppRegistration {
   is_new: boolean;
   sort_order: number;
   ratings: number;
+  user_count: number;
+  review_count: number;
   minimum_client_version: string | null;
   platforms: string[];
   published_at: string | null;
