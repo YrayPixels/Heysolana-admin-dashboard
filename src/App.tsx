@@ -21,6 +21,7 @@ import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import ChowdeckOrderDetail from "./pages/ChowdeckOrderDetail";
 import Settings from "./pages/Settings";
 import Admins from "./pages/Admins";
+import Merchants from "./pages/Merchants";
 import PushNotifications from "./pages/PushNotifications";
 import PushQueue from "./pages/PushQueue";
 import PushCampaignDetail from "./pages/PushCampaignDetail";
@@ -39,31 +40,39 @@ import BugReportDetail from "./pages/BugReportDetail";
 import SupportInbox from "./pages/SupportInbox";
 import SupportConversationDetail from "./pages/SupportConversationDetail";
 import NotFound from "./pages/NotFound";
+import { isMerchantMode } from "./lib/appMode";
+import {
+  MerchantAuthProvider,
+  useMerchantAuth,
+} from "./merchant/MerchantAuthContext";
+import MerchantSignIn from "./merchant/pages/MerchantSignIn";
+import MerchantDashboard from "./merchant/pages/MerchantDashboard";
+import MerchantOrders from "./merchant/pages/MerchantOrders";
+import MerchantOrderDetail from "./merchant/pages/MerchantOrderDetail";
+import MerchantRates from "./merchant/pages/MerchantRates";
+import MerchantAssets from "./merchant/pages/MerchantAssets";
+import MerchantWallets from "./merchant/pages/MerchantWallets";
+import MerchantProfile from "./merchant/pages/MerchantProfile";
 
 const queryClient = new QueryClient();
 
-// Loading spinner component
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-screen">
     <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
   </div>
 );
 
-// Protected route component that uses AuthContext
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { isLoggedIn, isLoading, needsVerification } = useAuth();
 
-  // Show loading spinner while checking authentication
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  // If user needs verification, redirect to sign in
   if (needsVerification) {
     return <Navigate to="/" replace />;
   }
 
-  // If not authenticated, redirect to sign in
   if (!isLoggedIn) {
     return <Navigate to="/" replace />;
   }
@@ -71,11 +80,23 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
-// App routes component that uses AuthContext
+const MerchantProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const { isLoggedIn, isLoading } = useMerchantAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!isLoggedIn) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 const AppRoutes = () => {
   const { isLoggedIn, isLoading, needsVerification } = useAuth();
 
-  // Show loading spinner while checking authentication
   if (isLoading) {
     return <LoadingSpinner />;
   }
@@ -148,33 +169,6 @@ const AppRoutes = () => {
       />
 
       <Route
-        path="/transactions"
-        element={
-          <ProtectedRoute>
-            <Transactions />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/transaction-list"
-        element={
-          <ProtectedRoute>
-            <TransactionList />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/transaction-list/:id"
-        element={
-          <ProtectedRoute>
-            <TransactionDetail />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
         path="/orders/jumia/:orderId"
         element={
           <ProtectedRoute>
@@ -202,6 +196,33 @@ const AppRoutes = () => {
       />
 
       <Route
+        path="/transactions"
+        element={
+          <ProtectedRoute>
+            <Transactions />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/transaction-list"
+        element={
+          <ProtectedRoute>
+            <TransactionList />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/transaction-list/:id"
+        element={
+          <ProtectedRoute>
+            <TransactionDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/settings"
         element={
           <ProtectedRoute>
@@ -220,6 +241,15 @@ const AppRoutes = () => {
       />
 
       <Route
+        path="/merchants"
+        element={
+          <ProtectedRoute>
+            <Merchants />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/push-notifications"
         element={
           <ProtectedRoute>
@@ -229,19 +259,19 @@ const AppRoutes = () => {
       />
 
       <Route
-        path="/push-queue"
+        path="/push-notifications/:id"
         element={
           <ProtectedRoute>
-            <PushQueue />
+            <PushCampaignDetail />
           </ProtectedRoute>
         }
       />
 
       <Route
-        path="/push-notifications/:id"
+        path="/push-queue"
         element={
           <ProtectedRoute>
-            <PushCampaignDetail />
+            <PushQueue />
           </ProtectedRoute>
         }
       />
@@ -386,17 +416,101 @@ const AppRoutes = () => {
   );
 };
 
+const MerchantRoutes = () => {
+  const { isLoggedIn, isLoading } = useMerchantAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <MerchantSignIn />}
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <MerchantProtectedRoute>
+            <MerchantDashboard />
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/orders"
+        element={
+          <MerchantProtectedRoute>
+            <MerchantOrders />
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/orders/:id"
+        element={
+          <MerchantProtectedRoute>
+            <MerchantOrderDetail />
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/rates"
+        element={
+          <MerchantProtectedRoute>
+            <MerchantRates />
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/assets"
+        element={
+          <MerchantProtectedRoute>
+            <MerchantAssets />
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/wallets"
+        element={
+          <MerchantProtectedRoute>
+            <MerchantWallets />
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <MerchantProtectedRoute>
+            <MerchantProfile />
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
+const AdminApp = () => (
+  <AuthProvider>
+    <ConfirmProvider>
+      <AppRoutes />
+    </ConfirmProvider>
+  </AuthProvider>
+);
+
+const MerchantApp = () => (
+  <MerchantAuthProvider>
+    <MerchantRoutes />
+  </MerchantAuthProvider>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AuthProvider>
-          <ConfirmProvider>
-            <AppRoutes />
-          </ConfirmProvider>
-        </AuthProvider>
+        {isMerchantMode() ? <MerchantApp /> : <AdminApp />}
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

@@ -19,6 +19,7 @@ import {
   ReceiptText,
   Settings,
   ShieldCheck,
+  Store,
   User,
   Users,
   Volume2,
@@ -150,6 +151,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       name: "Admin users",
       icon: <ShieldCheck className="h-5 w-5" />,
       path: "/admins",
+    },
+    {
+      name: "Merchants",
+      icon: <Store className="h-5 w-5" />,
+      path: "/merchants",
     },
     {
       name: "Profile",

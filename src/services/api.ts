@@ -560,6 +560,122 @@ export const fetchAdmins = async (): Promise<UserProfile[]> => {
   }
 };
 
+export interface AdminMerchant {
+  id: number;
+  name: string;
+  email: string;
+  phone_number?: string | null;
+  avatar_url?: string | null;
+  status: string;
+  is_primary: boolean;
+  google_linked: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const fetchMerchants = async (): Promise<AdminMerchant[]> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/merchants`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to fetch merchants");
+    }
+    const data = await response.json();
+    return data.merchants || [];
+  } catch (error) {
+    handleError(error);
+    return [];
+  }
+};
+
+export const createMerchant = async (payload: {
+  name: string;
+  email: string;
+  phone_number?: string;
+}): Promise<AdminMerchant | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/merchants`, {
+      method: "POST",
+      body: JSON.stringify({ ...payload, send_invite: true }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to create merchant");
+    }
+    if (data.invite_sent === false) {
+      toast.warning(data.message || "Merchant created, but invite email failed");
+    } else {
+      toast.success(data.message || "Merchant created");
+    }
+    return data.merchant as AdminMerchant;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateMerchant = async (
+  id: number,
+  payload: Partial<{
+    name: string;
+    email: string;
+    phone_number: string | null;
+    status: string;
+    is_primary: boolean;
+  }>
+): Promise<AdminMerchant | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/merchants/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update merchant");
+    }
+    toast.success(data.message || "Merchant updated");
+    return data.merchant as AdminMerchant;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deleteMerchant = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/merchants/${id}`, {
+      method: "DELETE",
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to delete merchant");
+    }
+    toast.success(data.message || "Merchant deleted");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
+export const resendMerchantInvite = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/merchants/${id}/resend-invite`,
+      { method: "POST" }
+    );
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to resend invite");
+    }
+    toast.success(data.message || "Invite sent");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
 // Reset an admin password (emails new temporary password)
 export const resetAdminPassword = async (adminId: number): Promise<boolean> => {
   try {
