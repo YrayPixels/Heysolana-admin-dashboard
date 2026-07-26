@@ -13,6 +13,7 @@ import {
   DollarSign,
   ShoppingCart,
   ShoppingBag,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,10 @@ import {
   getCrossmintOrderStats,
   CrossmintOrder,
   CrossmintOrdersFilters,
+  getChowdeckOrders,
+  getChowdeckOrderStats,
+  ChowdeckOrder,
+  ChowdeckOrdersFilters,
 } from '@/services/api';
 import { toast } from 'sonner';
 
@@ -97,6 +102,17 @@ const CROSSMINT_STATUS_OPTIONS = [
   { value: 'refunded', label: 'Refunded' },
 ];
 
+const CHOWDECK_STATUS_OPTIONS = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'processing', label: 'Processing' },
+  { value: 'out_for_delivery', label: 'Out for delivery' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'refunded', label: 'Refunded' },
+];
+
 const Orders = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -113,6 +129,13 @@ const Orders = () => {
   const [cmSearchDebounced, setCmSearchDebounced] = useState('');
   const [cmStatusFilter, setCmStatusFilter] = useState<string>('all');
 
+  // Chowdeck tab state
+  const [cdPage, setCdPage] = useState(1);
+  const [cdSearch, setCdSearch] = useState('');
+  const [cdSearchDebounced, setCdSearchDebounced] = useState('');
+  const [cdStatusFilter, setCdStatusFilter] = useState<string>('all');
+  const [cdPaymentFilter, setCdPaymentFilter] = useState<string>('all');
+
   // Debounce search
   React.useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 300);
@@ -122,6 +145,10 @@ const Orders = () => {
     const t = setTimeout(() => setCmSearchDebounced(cmSearch), 300);
     return () => clearTimeout(t);
   }, [cmSearch]);
+  React.useEffect(() => {
+    const t = setTimeout(() => setCdSearchDebounced(cdSearch), 300);
+    return () => clearTimeout(t);
+  }, [cdSearch]);
 
   const filters: JumiaOrdersFilters = {
     status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -158,6 +185,23 @@ const Orders = () => {
     queryFn: getCrossmintOrderStats,
   });
 
+  const cdFilters: ChowdeckOrdersFilters = {
+    status: cdStatusFilter !== 'all' ? cdStatusFilter : undefined,
+    payment_status: cdPaymentFilter !== 'all' ? cdPaymentFilter : undefined,
+    search: cdSearchDebounced || undefined,
+    page: cdPage,
+    per_page: perPage,
+  };
+  const { data: chowdeckResponse, isLoading: cdLoading, refetch: refetchChowdeck } = useQuery({
+    queryKey: ['chowdeck-orders', cdStatusFilter, cdPaymentFilter, cdSearchDebounced, cdPage],
+    queryFn: () => getChowdeckOrders(cdFilters),
+    placeholderData: (prev) => prev,
+  });
+  const { data: cdStats, isLoading: cdStatsLoading } = useQuery({
+    queryKey: ['chowdeck-order-stats'],
+    queryFn: getChowdeckOrderStats,
+  });
+
   const handleRefresh = () => {
     refetch();
     queryClient.invalidateQueries({ queryKey: ['jumia-order-stats'] });
@@ -170,23 +214,29 @@ const Orders = () => {
   const cmOrders = crossmintResponse?.data ?? [];
   const cmMeta = crossmintResponse?.meta;
 
+  const cdOrders = chowdeckResponse?.data ?? [];
+  const cdMeta = chowdeckResponse?.meta;
+
   return (
     <DashboardLayout>
       <div className="space-y-6 p-4 md:p-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
           <p className="text-muted-foreground">
-            View and process Jumia and Crossmint (Amazon) orders
+            View and process Jumia, Crossmint (Amazon), and Chowdeck orders
           </p>
         </div>
 
         <Tabs defaultValue="jumia" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 bg-white/5">
+          <TabsList className="grid w-full max-w-xl grid-cols-3 bg-white/5">
             <TabsTrigger value="jumia" className="data-[state=active]:bg-white/10">
               Jumia
             </TabsTrigger>
             <TabsTrigger value="crossmint" className="data-[state=active]:bg-white/10">
               Crossmint (Amazon)
+            </TabsTrigger>
+            <TabsTrigger value="chowdeck" className="data-[state=active]:bg-white/10">
+              Chowdeck
             </TabsTrigger>
           </TabsList>
 
@@ -583,6 +633,197 @@ const Orders = () => {
                             <ChevronLeft className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" disabled={cmMeta.current_page >= cmMeta.last_page} onClick={() => setCmPage((p) => p + 1)}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="chowdeck" className="space-y-6 mt-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card className="bg-black/30 border-white/10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                  <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {cdStatsLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{cdStats?.total_orders ?? 0}</div>}
+                </CardContent>
+              </Card>
+              <Card className="bg-black/30 border-white/10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {cdStatsLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{cdStats?.pending_orders ?? 0}</div>}
+                </CardContent>
+              </Card>
+              <Card className="bg-black/30 border-white/10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Delivered</CardTitle>
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {cdStatsLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{cdStats?.delivered_orders ?? 0}</div>}
+                </CardContent>
+              </Card>
+              <Card className="bg-black/30 border-white/10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Revenue (NGN)</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {cdStatsLoading ? (
+                    <Skeleton className="h-8 w-24" />
+                  ) : (
+                    <div className="text-2xl font-bold">
+                      {cdStats?.total_revenue != null
+                        ? Number(cdStats.total_revenue).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+                        : '0.00'}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="bg-black/30 border-white/10">
+              <CardHeader>
+                <CardTitle>Filters</CardTitle>
+                <CardDescription>Filter Chowdeck food orders</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="space-y-2">
+                    <Label>Search</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Order number, vendor, wallet..."
+                        value={cdSearch}
+                        onChange={(e) => setCdSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select value={cdStatusFilter} onValueChange={setCdStatusFilter}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CHOWDECK_STATUS_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Payment</Label>
+                    <Select value={cdPaymentFilter} onValueChange={setCdPaymentFilter}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_STATUS_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        refetchChowdeck();
+                        queryClient.invalidateQueries({ queryKey: ['chowdeck-order-stats'] });
+                        toast.success('Refreshed');
+                      }}
+                      className="w-full"
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-black/30 border-white/10">
+              <CardHeader>
+                <CardTitle>Chowdeck orders</CardTitle>
+                <CardDescription>Food orders placed via Chowdeck</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {cdLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
+                ) : cdOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    <UtensilsCrossed className="h-12 w-12 mb-4 opacity-50" />
+                    <p>No Chowdeck orders found</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="rounded-md border border-white/10">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-white/10">
+                            <TableHead>Order</TableHead>
+                            <TableHead>Vendor</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Total</TableHead>
+                            <TableHead>Payment</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {cdOrders.map((order: ChowdeckOrder) => (
+                            <TableRow key={order.id} className="border-white/5">
+                              <TableCell className="font-mono font-medium">{order.order_number}</TableCell>
+                              <TableCell>{order.vendor_name ?? '—'}</TableCell>
+                              <TableCell>{formatDate(order.order_date || order.created_at)}</TableCell>
+                              <TableCell>
+                                {order.currency} {Number(order.total_amount).toLocaleString()}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'}>
+                                  {order.payment_status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={getStatusBadgeVariant(order.status)}>{order.status}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigate(`/orders/chowdeck/${order.id}`)}
+                                  aria-label="View order details"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {cdMeta && cdMeta.last_page > 1 && (
+                      <div className="flex items-center justify-between mt-4">
+                        <p className="text-sm text-muted-foreground">
+                          Page {cdMeta.current_page} of {cdMeta.last_page} ({cdMeta.total} orders)
+                        </p>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" disabled={cdMeta.current_page <= 1} onClick={() => setCdPage((p) => Math.max(1, p - 1))}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" disabled={cdMeta.current_page >= cdMeta.last_page} onClick={() => setCdPage((p) => p + 1)}>
                             <ChevronRight className="h-4 w-4" />
                           </Button>
                         </div>

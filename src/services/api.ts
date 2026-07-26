@@ -1130,6 +1130,158 @@ export const updateCrossmintOrderStatus = async (
   }
 };
 
+// ============ Chowdeck Orders (Admin) ============
+
+export interface ChowdeckOrderItem {
+  id: number;
+  menu_id: number;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  product_image_url?: string | null;
+  modifiers?: Array<{ name?: string; option_name?: string; price?: number }> | null;
+}
+
+export interface ChowdeckOrderHistoryEntry {
+  id: number;
+  status: string;
+  status_description?: string;
+  timestamp: string;
+  notes?: string;
+  updated_by?: string;
+}
+
+export interface ChowdeckOrder {
+  id: number;
+  order_number: string;
+  wallet_address: string;
+  vendor_id: number;
+  vendor_name?: string | null;
+  place_id?: string | null;
+  formatted_address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  phone_number?: string | null;
+  customer_name?: string | null;
+  status: string;
+  total_amount: number;
+  currency: string;
+  payment_method?: string | null;
+  payment_status: string;
+  order_date: string;
+  notes?: string | null;
+  delivery_instructions?: string | null;
+  delivery_fee?: number | null;
+  tax_amount?: number | null;
+  subtotal?: number | null;
+  discount_amount?: number | null;
+  amount_usd?: number | null;
+  created_at: string;
+  updated_at: string;
+  order_items?: ChowdeckOrderItem[];
+  order_history?: ChowdeckOrderHistoryEntry[];
+  user?: JumiaOrderUser;
+}
+
+export interface ChowdeckOrdersResponse {
+  success: boolean;
+  data: ChowdeckOrder[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+export interface ChowdeckOrderStats {
+  total_orders: number;
+  pending_orders: number;
+  processing_orders: number;
+  out_for_delivery_orders: number;
+  delivered_orders: number;
+  cancelled_orders: number;
+  total_revenue: number;
+}
+
+export interface ChowdeckOrdersFilters {
+  status?: string;
+  payment_status?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}
+
+export const getChowdeckOrders = async (
+  filters: ChowdeckOrdersFilters = {}
+): Promise<ChowdeckOrdersResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.payment_status) params.set('payment_status', filters.payment_status);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.per_page) params.set('per_page', String(filters.per_page));
+    const url = `${API_BASE_URL}/admin/chowdeck/orders${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch Chowdeck orders: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getChowdeckOrder = async (
+  orderId: number
+): Promise<{ success: boolean; data: ChowdeckOrder } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/chowdeck/orders/${orderId}`);
+    if (!response.ok) throw new Error(`Failed to fetch Chowdeck order: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateChowdeckOrderStatus = async (
+  orderId: number,
+  payload: {
+    status: string;
+    status_description?: string;
+    payment_status?: string;
+    notes?: string;
+  }
+): Promise<{ success: boolean; message: string; data: ChowdeckOrder } | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/chowdeck/orders/${orderId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || `Failed to update Chowdeck order: ${response.statusText}`);
+    toast.success('Order status updated');
+    return data;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getChowdeckOrderStats = async (): Promise<ChowdeckOrderStats | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/chowdeck/orders/stats`);
+    if (!response.ok) throw new Error(`Failed to fetch Chowdeck order stats: ${response.statusText}`);
+    const json = await response.json();
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 // ============ Admin Settings (Processing Fee) ============
 
 export interface ProcessingFeeSettings {
