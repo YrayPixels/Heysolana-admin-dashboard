@@ -209,7 +209,12 @@ const Apps = () => {
                       <TableCell className="font-mono text-xs">{app.slug}</TableCell>
                       <TableCell>{app.category}</TableCell>
                       <TableCell>
-                        <Badge variant={statusVariant(app.status)}>{app.status}</Badge>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant={statusVariant(app.status)}>{app.status}</Badge>
+                          {app.visibility === "beta" ? (
+                            <Badge variant="outline">beta</Badge>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {Number(app.ratings ?? 0).toFixed(1)} ★ · {app.user_count ?? 0} users ·{" "}
@@ -219,6 +224,11 @@ const Apps = () => {
                         <div className="flex flex-wrap gap-1">
                           {app.is_featured ? <Badge variant="outline">featured</Badge> : null}
                           {app.is_new ? <Badge variant="outline">new</Badge> : null}
+                          {app.visibility === "beta" ? (
+                            <Badge variant="outline">
+                              allowlist {(app.beta_allowlist ?? []).length}
+                            </Badge>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
