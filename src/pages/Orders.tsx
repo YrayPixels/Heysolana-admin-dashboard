@@ -219,23 +219,24 @@ const Orders = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm sm:text-base">
             View and process Jumia, Crossmint (Amazon), and Chowdeck orders
           </p>
         </div>
 
         <Tabs defaultValue="jumia" className="w-full">
-          <TabsList className="grid w-full max-w-xl grid-cols-3 bg-white/5">
-            <TabsTrigger value="jumia" className="data-[state=active]:bg-white/10">
+          <TabsList className="grid w-full max-w-xl grid-cols-3 bg-white/5 h-auto">
+            <TabsTrigger value="jumia" className="data-[state=active]:bg-white/10 text-xs sm:text-sm px-2 py-2">
               Jumia
             </TabsTrigger>
-            <TabsTrigger value="crossmint" className="data-[state=active]:bg-white/10">
-              Crossmint (Amazon)
+            <TabsTrigger value="crossmint" className="data-[state=active]:bg-white/10 text-xs sm:text-sm px-2 py-2">
+              <span className="sm:hidden">Amazon</span>
+              <span className="hidden sm:inline">Crossmint (Amazon)</span>
             </TabsTrigger>
-            <TabsTrigger value="chowdeck" className="data-[state=active]:bg-white/10">
+            <TabsTrigger value="chowdeck" className="data-[state=active]:bg-white/10 text-xs sm:text-sm px-2 py-2">
               Chowdeck
             </TabsTrigger>
           </TabsList>
@@ -456,7 +457,7 @@ const Orders = () => {
 
                 {/* Pagination */}
                 {meta && meta.last_page > 1 && (
-                  <div className="flex items-center justify-between mt-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
                     <p className="text-sm text-muted-foreground">
                       Page {meta.current_page} of {meta.last_page} ({meta.total} orders)
                     </p>
@@ -624,7 +625,7 @@ const Orders = () => {
                       </Table>
                     </div>
                     {cmMeta && cmMeta.last_page > 1 && (
-                      <div className="flex items-center justify-between mt-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
                         <p className="text-sm text-muted-foreground">
                           Page {cmMeta.current_page} of {cmMeta.last_page} ({cmMeta.total} orders)
                         </p>
@@ -815,7 +816,7 @@ const Orders = () => {
                       </Table>
                     </div>
                     {cdMeta && cdMeta.last_page > 1 && (
-                      <div className="flex items-center justify-between mt-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
                         <p className="text-sm text-muted-foreground">
                           Page {cdMeta.current_page} of {cdMeta.last_page} ({cdMeta.total} orders)
                         </p>

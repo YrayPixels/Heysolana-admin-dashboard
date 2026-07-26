@@ -153,10 +153,10 @@ const Transactions: React.FC = () => {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">
               <AnimatedText gradient>Transactions & TVP</AnimatedText>
             </h1>
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm sm:text-base">
               Confirmed app-originated volume, fees, and breakdowns by app,
               provider, flow type, and cluster.
             </p>

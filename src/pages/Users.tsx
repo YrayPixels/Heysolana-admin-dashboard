@@ -254,14 +254,16 @@ const Users = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Users</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Users</h1>
             <p className="text-muted-foreground">
               Manage and monitor user accounts across the platform
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button 
               variant="outline" 
+              size="sm"
+              className="flex-1 sm:flex-none"
               onClick={() => {
                 const wallets = usersData?.users
                   ?.filter(u => u.wallet_address && u.wallet_address !== '')
@@ -277,13 +279,14 @@ const Users = () => {
               disabled={!usersData?.users?.some(u => u.wallet_address && u.wallet_address !== '')}
             >
               <Copy className="mr-2 h-4 w-4" />
-              Copy All Wallets
+              <span className="sm:hidden">Copy wallets</span>
+              <span className="hidden sm:inline">Copy All Wallets</span>
             </Button>
-            <Button variant="outline" onClick={handleExport}>
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-            <Button variant="outline" onClick={handleRefresh}>
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={handleRefresh}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
@@ -719,7 +722,7 @@ const Users = () => {
 
                 {/* Pagination */}
                 {usersData && usersData.last_page > 1 && (
-                  <div className="mt-4">
+                  <div className="mt-4 overflow-x-auto">
                     <Pagination>
                       <PaginationContent>
                         <PaginationItem>

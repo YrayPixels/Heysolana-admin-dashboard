@@ -97,23 +97,23 @@ const SupportInbox = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Headphones className="h-8 w-8 text-solana" />
-            <div>
+          <div className="flex items-center gap-3 min-w-0">
+            <Headphones className="h-8 w-8 text-solana shrink-0" />
+            <div className="min-w-0">
               <h1 className="text-2xl font-bold">Support inbox</h1>
               <p className="text-muted-foreground text-sm">
                 Two-way chat with HeySolana wallet users
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            <Button size="sm" onClick={() => setComposeOpen(true)}>
+            <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setComposeOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               New message
             </Button>

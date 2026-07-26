@@ -279,10 +279,10 @@ const Analytics: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">
               <AnimatedText gradient>Analytics Dashboard</AnimatedText>
             </h1>
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm sm:text-base">
               <AnimatedText delay={200}>
                 Comprehensive tracking and insights for your application
               </AnimatedText>

@@ -105,20 +105,20 @@ function DataTable<T extends Record<string, any>>({
   };
 
   return (
-    <div className="rounded-md border border-white/10 bg-black/20 backdrop-blur-lg overflow-hidden">
-      <div className="flex items-center justify-between p-4">
-        <div className="relative">
+    <div className="rounded-md border border-white/10 bg-black/20 backdrop-blur-lg overflow-hidden min-w-0">
+      <div className="flex items-center justify-between gap-3 p-3 sm:p-4">
+        <div className="relative w-full max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search..."
-            className="pl-8 w-64 bg-black/30 border-white/10"
+            className="pl-8 w-full bg-black/30 border-white/10"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
         </div>
       </div>
-      <div className="max-h-[calc(100vh-250px)] overflow-auto scrollbar-none">
+      <div className="max-h-[calc(100vh-250px)] overflow-auto">
         <Table>
           <TableHeader className="sticky top-0 bg-black/50 backdrop-blur-md">
             <TableRow>

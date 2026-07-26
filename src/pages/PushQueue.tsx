@@ -121,18 +121,20 @@ const PushQueue = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight">Push queue</h1>
             <p className="text-sm text-muted-foreground">
               Delivery results for queued Expo pushes, including failures.
               {stats ? ` Cron batch size: ${stats.batch_size}/min.` : null}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
+              size="sm"
+              className="flex-1 sm:flex-none"
               onClick={() => {
                 void refetchStats();
                 void refetchList();
@@ -142,7 +144,12 @@ const PushQueue = () => {
               <RefreshCw className={`mr-2 h-4 w-4 ${listFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            <Button onClick={() => void handleProcessNow()} disabled={processing}>
+            <Button
+              size="sm"
+              className="flex-1 sm:flex-none"
+              onClick={() => void handleProcessNow()}
+              disabled={processing}
+            >
               <Play className="mr-2 h-4 w-4" />
               {processing ? "Processing…" : "Process now"}
             </Button>
@@ -329,7 +336,7 @@ const PushQueue = () => {
             )}
 
             {meta && meta.last_page > 1 && (
-              <div className="mt-4 flex items-center justify-between">
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">
                   Page {meta.current_page} of {meta.last_page}
                 </p>

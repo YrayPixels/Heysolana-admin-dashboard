@@ -196,7 +196,7 @@ const BugReports = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Bugs & Logs</h1>
@@ -347,7 +347,7 @@ const BugReports = () => {
                   </Button>
                 </form>
                 <Select value={severityFilter} onValueChange={(v) => { setSeverityFilter(v); setPage(1); setSelectedIds([]); }}>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-full sm:w-[140px]">
                     <SelectValue placeholder="Severity" />
                   </SelectTrigger>
                   <SelectContent>
@@ -358,7 +358,7 @@ const BugReports = () => {
                   </SelectContent>
                 </Select>
                 <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); setSelectedIds([]); }}>
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-full sm:w-[120px]">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -375,7 +375,7 @@ const BugReports = () => {
                     setSelectedIds([]);
                   }}
                 >
-                  <SelectTrigger className="w-[150px]">
+                  <SelectTrigger className="w-full sm:w-[150px]">
                     <SelectValue placeholder="Source" />
                   </SelectTrigger>
                   <SelectContent>
@@ -473,7 +473,7 @@ const BugReports = () => {
                 </Table>
 
                 {meta && meta.last_page > 1 && (
-                  <div className="flex items-center justify-between mt-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
                     <p className="text-sm text-muted-foreground">
                       Page {meta.current_page} of {meta.last_page} ({meta.total} total)
                     </p>

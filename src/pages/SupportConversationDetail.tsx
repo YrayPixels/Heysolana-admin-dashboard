@@ -166,26 +166,28 @@ const SupportConversationDetail = () => {
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto flex flex-col gap-4 -mt-2">
-        <div className="flex items-center gap-3 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/support")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          {isLoading ? (
-            <Skeleton className="h-8 w-48" />
-          ) : (
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold truncate">
-                {conversation?.username
-                  ? `@${conversation.username}`
-                  : conversation?.phone_number ?? `Conversation #${conversationId}`}
-              </h1>
-              <p className="text-sm text-muted-foreground truncate">
-                {conversation?.wallet_address ?? conversation?.phone_number ?? ""}
-              </p>
-            </div>
-          )}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start shrink-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/support")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            {isLoading ? (
+              <Skeleton className="h-8 w-48" />
+            ) : (
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl font-bold truncate">
+                  {conversation?.username
+                    ? `@${conversation.username}`
+                    : conversation?.phone_number ?? `Conversation #${conversationId}`}
+                </h1>
+                <p className="text-sm text-muted-foreground truncate">
+                  {conversation?.wallet_address ?? conversation?.phone_number ?? ""}
+                </p>
+              </div>
+            )}
+          </div>
           {conversation && (
-            <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+            <div className="flex gap-2 flex-wrap sm:justify-end pl-11 sm:pl-0">
               <Badge>{conversation.status}</Badge>
               {conversation.status !== "resolved" && (
                 <Button

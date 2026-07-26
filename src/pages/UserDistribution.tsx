@@ -205,12 +205,12 @@ const UserDistribution: React.FC = () => {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">
               <AnimatedText gradient>User Distribution Analytics</AnimatedText>
             </h1>
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm sm:text-base">
               <AnimatedText delay={200}>
                 Comprehensive user demographics and registration insights
               </AnimatedText>
@@ -218,7 +218,7 @@ const UserDistribution: React.FC = () => {
           </div>
           <Button
             onClick={fetchData}
-            className="bg-gradient-to-r from-solana to-purple-600 hover:opacity-90"
+            className="bg-gradient-to-r from-solana to-purple-600 hover:opacity-90 w-full sm:w-auto shrink-0"
           >
             Refresh Data
           </Button>

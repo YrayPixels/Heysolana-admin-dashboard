@@ -212,7 +212,7 @@ const TransactionList: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
@@ -446,7 +446,7 @@ const TransactionList: React.FC = () => {
                 </div>
 
                 {meta && meta.last_page > 1 && (
-                  <div className="flex items-center justify-between mt-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
                     <p className="text-sm text-muted-foreground">
                       Page {meta.current_page} of {meta.last_page}
                     </p>

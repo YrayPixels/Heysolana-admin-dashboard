@@ -158,19 +158,19 @@ const Dashboard: React.FC = () => {
           </AlertDescription>
         </Alert>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">
               <AnimatedText gradient>Admin Dashboard</AnimatedText>
             </h1>
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm sm:text-base">
               Overview of your application performance and usage metrics
             </p>
           </div>
           <Button
             onClick={() => navigate("/analytics")}
             variant="outline"
-            className="border-solana/20 hover:bg-solana/10"
+            className="border-solana/20 hover:bg-solana/10 w-full sm:w-auto shrink-0"
           >
             <BarChart3 className="w-4 h-4 mr-2" />
             View Analytics
