@@ -130,7 +130,7 @@ const CrossmintOrderDetail = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Crossmint order</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Amazon order</h1>
             <p className="text-muted-foreground">
               {order?.order_number ?? `Order #${id}`}
             </p>
@@ -148,7 +148,7 @@ const CrossmintOrderDetail = () => {
             <Card className="bg-black/30 border-white/10 md:col-span-2">
               <CardHeader>
                 <CardTitle>Order details</CardTitle>
-                <CardDescription>Crossmint (Amazon) order information</CardDescription>
+                <CardDescription>Amazon order information</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -157,7 +157,7 @@ const CrossmintOrderDetail = () => {
                     <p className="font-mono font-medium">{order.order_number}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground text-sm">Crossmint ID</span>
+                    <span className="text-muted-foreground text-sm">Provider order ID</span>
                     <p className="font-mono text-sm">{order.crossmint_order_id ?? '—'}</p>
                   </div>
                   <div>

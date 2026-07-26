@@ -166,7 +166,7 @@ const Settings = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">
-            Configure processing fees and the single treasury wallet used for all fees and payments (Jumia USDC, Crossmint, etc.)
+            Configure processing fees and the single treasury wallet used for all fees and payments (Jumia USDC, Amazon, etc.)
           </p>
         </div>
 
@@ -424,7 +424,7 @@ const Settings = () => {
               Delivery fee
             </CardTitle>
             <CardDescription>
-              Fixed delivery fee shown and charged per order. Separate for Jumia (NGN) and Crossmint/Amazon (USD). Shown to the user as part of the total item price and in the purchase summary.
+              Fixed delivery fee shown and charged per order. Separate for Jumia (NGN) and Amazon (USD). Shown to the user as part of the total item price and in the purchase summary.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -449,7 +449,7 @@ const Settings = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="delivery-crossmint">Delivery fee (USD) – Crossmint / Amazon</Label>
+                  <Label htmlFor="delivery-crossmint">Delivery fee (USD) – Amazon</Label>
                   <Input
                     id="delivery-crossmint"
                     type="number"
@@ -593,7 +593,7 @@ const Settings = () => {
               Processing fee
             </CardTitle>
             <CardDescription>
-              These values are applied when deducting from user accounts. Use fixed NGN for Jumia orders, fixed USD for Crossmint/Amazon. Percent applies to the order total.
+              These values are applied when deducting from user accounts. Use fixed NGN for Jumia orders, fixed USD for Amazon. Percent applies to the order total.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -633,7 +633,7 @@ const Settings = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fee-usd">Fixed fee (USD) – e.g. Crossmint/Amazon</Label>
+                  <Label htmlFor="fee-usd">Fixed fee (USD) – e.g. Amazon</Label>
                   <Input
                     id="fee-usd"
                     type="number"

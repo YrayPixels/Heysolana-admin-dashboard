@@ -223,7 +223,7 @@ const Orders = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            View and process Jumia, Crossmint (Amazon), and Chowdeck orders
+            View and process Jumia, Amazon, and Chowdeck orders
           </p>
         </div>
 
@@ -233,8 +233,7 @@ const Orders = () => {
               Jumia
             </TabsTrigger>
             <TabsTrigger value="crossmint" className="data-[state=active]:bg-white/10 text-xs sm:text-sm px-2 py-2">
-              <span className="sm:hidden">Amazon</span>
-              <span className="hidden sm:inline">Crossmint (Amazon)</span>
+              Amazon
             </TabsTrigger>
             <TabsTrigger value="chowdeck" className="data-[state=active]:bg-white/10 text-xs sm:text-sm px-2 py-2">
               Chowdeck
@@ -531,7 +530,7 @@ const Orders = () => {
             <Card className="bg-black/30 border-white/10">
               <CardHeader>
                 <CardTitle>Filters</CardTitle>
-                <CardDescription>Filter Crossmint (Amazon) orders</CardDescription>
+                <CardDescription>Filter Amazon orders</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-4">
@@ -564,8 +563,8 @@ const Orders = () => {
 
             <Card className="bg-black/30 border-white/10">
               <CardHeader>
-                <CardTitle>Crossmint orders</CardTitle>
-                <CardDescription>Amazon orders placed via Crossmint</CardDescription>
+                <CardTitle>Amazon orders</CardTitle>
+                <CardDescription>Orders placed via Amazon shopping</CardDescription>
               </CardHeader>
               <CardContent>
                 {cmLoading ? (
@@ -577,7 +576,7 @@ const Orders = () => {
                 ) : cmOrders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <ShoppingBag className="h-12 w-12 mb-4 opacity-50" />
-                    <p>No Crossmint orders found</p>
+                    <p>No Amazon orders found</p>
                   </div>
                 ) : (
                   <>

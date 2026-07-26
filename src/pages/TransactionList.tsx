@@ -78,7 +78,7 @@ const PROVIDER_OPTIONS = [
   { label: "Jupiter", value: "jupiter" },
   { label: "Pajcash", value: "pajcash" },
   { label: "Airbills", value: "airbills" },
-  { label: "Crossmint", value: "crossmint" },
+  { label: "Amazon", value: "crossmint" },
 ];
 
 const currency = new Intl.NumberFormat("en-US", {
