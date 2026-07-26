@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import Logo from "../../../public/logo.png";
 import { GOOGLE_CLIENT_ID } from "@/lib/appMode";
 import { useMerchantAuth } from "../MerchantAuthContext";
-import { GoogleSignInButton } from "../GoogleSignInButton";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 /** Google only allows http://localhost / 127.0.0.1 for local OAuth, not merchant.localhost or LAN IPs. */
 function getGoogleOriginIssue(): string | null {

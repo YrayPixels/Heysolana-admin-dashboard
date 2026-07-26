@@ -1,15 +1,17 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Volume2, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import AnimatedText from "@/components/ui-custom/AnimatedText";
 import { toast } from "sonner";
 import Logo from "../../public/logo.png";
+import { GOOGLE_CLIENT_ID } from "@/lib/appMode";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const SignIn: React.FC = () => {
-  const { login, verify, needsVerification } = useAuth();
+  const { login, loginWithGoogle, verify, needsVerification } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -43,6 +45,23 @@ const SignIn: React.FC = () => {
     }
   };
 
+  const handleGoogleCredential = useCallback(
+    async (idToken: string) => {
+      setLoading(true);
+      try {
+        const ok = await loginWithGoogle(idToken);
+        if (!ok) {
+          toast.error("Could not sign in with Google");
+        }
+      } catch {
+        toast.error("Google sign-in failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loginWithGoogle]
+  );
+
   const handleVerification = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -72,7 +91,6 @@ const SignIn: React.FC = () => {
     setVerificationCode("");
   };
 
-  // Auto-switch to verification step if needed
   React.useEffect(() => {
     if (needsVerification) {
       setStep("verify");
@@ -107,47 +125,58 @@ const SignIn: React.FC = () => {
         </div>
 
         {step === "login" ? (
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="bg-black/30 border-white/10"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <a
-                  href="#"
-                  className="text-xs text-solana hover:text-solana/80 transition-colors"
-                >
-                  Forgot password?
-                </a>
+          <div className="space-y-6">
+            {GOOGLE_CLIENT_ID ? (
+              <div className="flex flex-col items-center gap-3">
+                <GoogleSignInButton
+                  onCredential={handleGoogleCredential}
+                  onError={(message) => toast.error(message)}
+                  disabled={loading}
+                />
+                <div className="flex w-full items-center gap-3">
+                  <div className="h-px flex-1 bg-white/10" />
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
               </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-black/30 border-white/10"
-              />
-            </div>
+            ) : null}
 
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-solana to-purple-600 hover:opacity-90 transition-opacity"
-              disabled={loading}
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="admin@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-black/30 border-white/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-black/30 border-white/10"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-solana to-purple-600 hover:opacity-90 transition-opacity"
+                disabled={loading}
+              >
+                {loading ? "Signing in..." : "Sign in with email"}
+              </Button>
+            </form>
+          </div>
         ) : (
           <form onSubmit={handleVerification} className="space-y-6">
             <div className="space-y-2">

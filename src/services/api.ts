@@ -439,6 +439,32 @@ export const verifyAdmin = async (verificationCode: string): Promise<boolean> =>
   }
 };
 
+// Admin Google login (skips email OTP for existing admins)
+export const loginAdminWithGoogle = async (
+  googleIdToken: string
+): Promise<UserProfile | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/login-admin-google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ google_id_token: googleIdToken }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Google login failed");
+    }
+
+    setAuthToken(data.token, 24);
+    localStorage.setItem("user_profile", JSON.stringify(data.admin));
+    localStorage.removeItem("temp_admin_email");
+    toast.success("Login successful");
+    return data.admin as UserProfile;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 // Update user profile (if needed for admin updates)
 export const updateUserProfile = async (profile: Partial<UserProfile>): Promise<UserProfile | null> => {
   try {

@@ -2,6 +2,7 @@ import React, { createContext, useEffect, useState, useCallback } from "react";
 import {
   getUserProfile,
   isAuthenticated,
+  loginAdminWithGoogle,
   loginUser,
   logoutUser,
   updateUserProfile,
@@ -19,6 +20,7 @@ interface AuthContextType {
     email: string,
     password: string
   ) => Promise<{ success: boolean; needsVerification: boolean }>;
+  loginWithGoogle: (idToken: string) => Promise<boolean>;
   verify: (verificationCode: string) => Promise<boolean>;
   logout: () => void;
   updateProfile: (profile: Partial<UserProfile>) => Promise<UserProfile | null>;
@@ -31,6 +33,7 @@ export const AuthContext = createContext<AuthContextType>({
   needsVerification: false,
   isLoading: true,
   login: async () => ({ success: false, needsVerification: false }),
+  loginWithGoogle: async () => false,
   verify: async () => false,
   logout: () => {},
   updateProfile: async () => null,
@@ -112,6 +115,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const loginWithGoogle = async (idToken: string) => {
+    try {
+      setIsLoading(true);
+      const profile = await loginAdminWithGoogle(idToken);
+      if (!profile) return false;
+      setUser(profile);
+      setIsLoggedIn(true);
+      setNeedsVerification(false);
+      navigate("/dashboard");
+      return true;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const verify = async (verificationCode: string) => {
     try {
       setIsLoading(true);
@@ -155,6 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         needsVerification,
         isLoading,
         login,
+        loginWithGoogle,
         verify,
         logout,
         updateProfile,
