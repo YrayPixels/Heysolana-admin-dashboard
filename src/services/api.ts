@@ -3187,6 +3187,7 @@ export const searchSupportUsers = async (
 // ============ App Registrations (Admin) ============
 
 export type AppRegistrationStatus = "draft" | "published" | "disabled";
+export type AppVisibility = "public" | "beta";
 
 export interface AppToolParamOption {
   value: string;
@@ -3238,6 +3239,8 @@ export interface AppRegistration {
   tools: AppToolDefinition[];
   capability_ids: string[];
   status: AppRegistrationStatus;
+  visibility?: AppVisibility;
+  beta_allowlist?: string[];
   is_featured: boolean;
   is_new: boolean;
   sort_order: number;
@@ -3268,6 +3271,8 @@ export interface AppRegistrationPayload {
   tools?: AppToolDefinition[];
   capability_ids?: string[];
   status?: AppRegistrationStatus;
+  visibility?: AppVisibility;
+  beta_allowlist?: string[];
   is_featured?: boolean;
   is_new?: boolean;
   sort_order?: number;

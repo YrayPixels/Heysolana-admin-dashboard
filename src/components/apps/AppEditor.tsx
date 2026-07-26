@@ -11,6 +11,7 @@ import {
   AppRegistrationPayload,
   AppRegistrationStatus,
   AppToolDefinition,
+  AppVisibility,
 } from "@/services/api";
 
 interface FormState {
@@ -31,6 +32,8 @@ interface FormState {
   brand_secondary: string;
   tools_json: string;
   status: AppRegistrationStatus;
+  visibility: AppVisibility;
+  beta_allowlist: string;
   is_featured: boolean;
   is_new: boolean;
   sort_order: string;
@@ -57,6 +60,8 @@ const emptyForm: FormState = {
   brand_secondary: "",
   tools_json: "[]",
   status: "draft",
+  visibility: "public",
+  beta_allowlist: "",
   is_featured: false,
   is_new: true,
   sort_order: "0",
@@ -111,6 +116,8 @@ const appToForm = (app?: AppRegistration | null): FormState => {
     brand_secondary: app.brand_colors?.secondary ?? "",
     tools_json: JSON.stringify(app.tools ?? [], null, 2),
     status: app.status ?? "draft",
+    visibility: app.visibility === "beta" ? "beta" : "public",
+    beta_allowlist: (app.beta_allowlist ?? []).join("\n"),
     is_featured: !!app.is_featured,
     is_new: !!app.is_new,
     sort_order: String(app.sort_order ?? 0),
@@ -208,6 +215,8 @@ export const AppEditor = ({
       brand_colors: brandColors,
       tools,
       status: form.status,
+      visibility: form.visibility,
+      beta_allowlist: linesToList(form.beta_allowlist),
       is_featured: form.is_featured,
       is_new: form.is_new,
       sort_order: Number.parseInt(form.sort_order || "0", 10) || 0,
@@ -264,6 +273,35 @@ export const AppEditor = ({
               <option value="disabled">Disabled</option>
             </select>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="visibility">Visibility</Label>
+            <select
+              id="visibility"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={form.visibility}
+              onChange={(e) => update("visibility", e.target.value as AppVisibility)}
+            >
+              <option value="public">Public (everyone)</option>
+              <option value="beta">Beta (allowlist only)</option>
+            </select>
+          </div>
+          {form.visibility === "beta" ? (
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="beta_allowlist">Beta allowlist</Label>
+              <Textarea
+                id="beta_allowlist"
+                rows={5}
+                className="font-mono text-xs"
+                placeholder={"One per line: wallet address, email, or phone\nExampleWallet111...\nqa@heysolana.com\n+2348012345678"}
+                value={form.beta_allowlist}
+                onChange={(e) => update("beta_allowlist", e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Published beta apps only appear for matching wallets, emails, or phones. Matching is
+                case-insensitive.
+              </p>
+            </div>
+          ) : null}
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="short_description">Short description</Label>
             <Input
