@@ -10,10 +10,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   deleteWhatsAppCampaign,
   getWhatsAppCampaign,
   sendWhatsAppCampaign,
 } from "@/services/api";
+
+const formatDate = (value: string | null | undefined) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+};
 
 const targetLabel = (target: string, search: string | null, userCount: number) => {
   if (target === "all") return "All users with phone numbers";
@@ -194,13 +208,73 @@ const WhatsAppCampaignDetail = () => {
                 </div>
                 {campaign?.sent && (campaign.stats?.failed ?? 0) > 0 ? (
                   <p className="text-sm text-amber-400">
-                    {campaign.stats?.failed} message(s) failed. Check logs for details.
+                    {campaign.stats?.failed} message(s) failed delivery. See failed sends below.
                   </p>
                 ) : null}
               </>
             )}
           </CardContent>
         </Card>
+
+        {campaign?.sent && (campaign.stats?.failed ?? 0) > 0 ? (
+          <Card className="glass-morphism border-white/10">
+            <CardHeader>
+              <CardTitle>Failed sends</CardTitle>
+              <CardDescription>
+                Delivery errors returned by Meta for this campaign
+                {(campaign.failed_sends?.length ?? 0) < (campaign.stats?.failed ?? 0)
+                  ? ` (showing ${campaign.failed_sends?.length ?? 0} of ${campaign.stats?.failed})`
+                  : ""}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(campaign.failed_sends?.length ?? 0) === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  Failed count is {campaign.stats?.failed}, but no send-log rows were returned.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Recipient</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Error</TableHead>
+                        <TableHead>Updated</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {campaign.failed_sends?.map((failure) => (
+                        <TableRow key={failure.id}>
+                          <TableCell>
+                            <div className="text-sm font-medium">
+                              {failure.user_name ||
+                                (failure.user_id ? `User #${failure.user_id}` : "Unknown")}
+                            </div>
+                            {failure.user_email ? (
+                              <div className="text-xs text-muted-foreground">{failure.user_email}</div>
+                            ) : null}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {failure.phone_number || "—"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-[360px] whitespace-pre-wrap break-words text-sm text-destructive">
+                              {failure.error_message || "Unknown error"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                            {formatDate(failure.updated_at || failure.sent_at || failure.created_at)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </DashboardLayout>
   );

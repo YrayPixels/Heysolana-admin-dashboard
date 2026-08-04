@@ -2436,6 +2436,18 @@ export const sendPushCampaign = async (
 
 // ============ WhatsApp campaigns (Admin) ============
 
+export interface WhatsAppCampaignFailedSend {
+  id: number;
+  user_id: number | null;
+  user_name: string | null;
+  user_email: string | null;
+  phone_number: string | null;
+  error_message: string | null;
+  sent_at: string | null;
+  updated_at: string | null;
+  created_at: string | null;
+}
+
 export interface WhatsAppCampaign {
   id: number;
   name: string | null;
@@ -2464,6 +2476,7 @@ export interface WhatsAppCampaign {
     unique_clickers: number;
     ctr_rate: number;
   };
+  failed_sends?: WhatsAppCampaignFailedSend[];
   created_at: string | null;
   updated_at: string | null;
 }

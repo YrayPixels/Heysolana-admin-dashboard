@@ -2,7 +2,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { WhatsAppCampaign } from "@/services/api";
 
 export const WhatsAppStatsCards = ({ campaign }: { campaign: WhatsAppCampaign }) => (
-  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
     <Card className="glass-morphism border-white/10">
       <CardHeader className="pb-2">
         <CardDescription>Pending</CardDescription>
@@ -13,6 +13,16 @@ export const WhatsAppStatsCards = ({ campaign }: { campaign: WhatsAppCampaign })
       <CardHeader className="pb-2">
         <CardDescription>Sent</CardDescription>
         <CardTitle>{campaign.stats?.delivered ?? 0}</CardTitle>
+      </CardHeader>
+    </Card>
+    <Card className="glass-morphism border-white/10">
+      <CardHeader className="pb-2">
+        <CardDescription>Failed</CardDescription>
+        <CardTitle className={
+          (campaign.stats?.failed ?? 0) > 0 ? "text-amber-400" : undefined
+        }>
+          {campaign.stats?.failed ?? 0}
+        </CardTitle>
       </CardHeader>
     </Card>
     <Card className="glass-morphism border-white/10">
