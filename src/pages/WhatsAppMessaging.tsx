@@ -189,9 +189,9 @@ const WhatsAppMessaging = () => {
                       <TableCell>
                         {campaign.sent ? (
                           <div className="grid gap-1 text-xs text-muted-foreground">
-                            <span>Pending: {campaign.stats?.queued ?? 0}</span>
-                            <span>Sent: {campaign.stats?.delivered ?? 0}</span>
-                            <span>CTR: {campaign.stats?.ctr_rate ?? 0}%</span>
+                            <span>Accepted: {campaign.stats?.accepted ?? 0}</span>
+                            <span>Delivered: {campaign.stats?.delivered ?? 0}</span>
+                            <span>Failed: {campaign.stats?.failed ?? 0}</span>
                           </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">Not sent</span>

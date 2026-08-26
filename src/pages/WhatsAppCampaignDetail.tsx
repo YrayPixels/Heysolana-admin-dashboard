@@ -21,6 +21,7 @@ import {
   deleteWhatsAppCampaign,
   getWhatsAppCampaign,
   sendWhatsAppCampaign,
+  WhatsAppCampaignSendLogRow,
 } from "@/services/api";
 
 const formatDate = (value: string | null | undefined) => {
@@ -35,6 +36,75 @@ const targetLabel = (target: string, search: string | null, userCount: number) =
   return search ? `Filter: ${search}` : "Filtered users";
 };
 
+const statusLabel = (status: string | null | undefined) => {
+  switch (status) {
+    case "accepted":
+      return "Accepted (awaiting delivery)";
+    case "sent":
+      return "Sent to WhatsApp";
+    case "delivered":
+      return "Delivered";
+    case "read":
+      return "Read";
+    case "failed":
+      return "Failed";
+    case "queued":
+      return "Queued";
+    default:
+      return status || "Unknown";
+  }
+};
+
+const RecipientRows = ({
+  rows,
+  showError,
+}: {
+  rows: WhatsAppCampaignSendLogRow[];
+  showError?: boolean;
+}) => (
+  <div className="overflow-x-auto">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Recipient</TableHead>
+          <TableHead>Phone</TableHead>
+          <TableHead>Status</TableHead>
+          {showError ? <TableHead>Error</TableHead> : null}
+          <TableHead>Updated</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.id}>
+            <TableCell>
+              <div className="text-sm font-medium">
+                {row.user_name || (row.user_id ? `User #${row.user_id}` : "Unknown")}
+              </div>
+              {row.user_email ? (
+                <div className="text-xs text-muted-foreground">{row.user_email}</div>
+              ) : null}
+            </TableCell>
+            <TableCell className="font-mono text-sm">{row.phone_number || "—"}</TableCell>
+            <TableCell>
+              <Badge variant="outline">{statusLabel(row.status)}</Badge>
+            </TableCell>
+            {showError ? (
+              <TableCell>
+                <div className="max-w-[360px] whitespace-pre-wrap break-words text-sm text-destructive">
+                  {row.error_message || "Unknown error"}
+                </div>
+              </TableCell>
+            ) : null}
+            <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+              {formatDate(row.updated_at || row.delivered_at || row.sent_at || row.created_at)}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+);
+
 const WhatsAppCampaignDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -48,15 +118,26 @@ const WhatsAppCampaignDetail = () => {
     queryKey: ["whatsapp-campaign", campaignId],
     queryFn: () => getWhatsAppCampaign(campaignId),
     enabled: !Number.isNaN(campaignId),
+    refetchInterval: (query) => {
+      const stats = query.state.data?.data?.stats;
+      if (!stats) return false;
+      const waiting =
+        (stats.queued ?? 0) > 0 || (stats.accepted ?? 0) > 0;
+      return waiting ? 10_000 : false;
+    },
   });
 
   const campaign = data?.data;
+  const acceptedCount = campaign?.stats?.accepted ?? 0;
+  const failedCount = campaign?.stats?.failed ?? 0;
+  const deliveredCount = campaign?.stats?.delivered ?? 0;
 
   const handleSend = async () => {
     if (!campaign || campaign.sent) return;
     const ok = await confirm({
       title: "Send WhatsApp messages now?",
-      description: "Send WhatsApp messages to matching recipients immediately via Meta?",
+      description:
+        "Submit WhatsApp messages to Meta now? Delivery/failure updates arrive via webhook afterward.",
       confirmLabel: "Send now",
     });
     if (!ok) return;
@@ -161,7 +242,7 @@ const WhatsAppCampaignDetail = () => {
             <CardTitle>Message</CardTitle>
             <CardDescription>
               {campaign?.sent && campaign.sent_at
-                ? `Sent ${new Date(campaign.sent_at).toLocaleString()} to ${campaign.recipient_count ?? 0} recipient(s)`
+                ? `Submitted ${new Date(campaign.sent_at).toLocaleString()} to ${campaign.recipient_count ?? 0} recipient(s) — ${deliveredCount} delivered, ${acceptedCount} awaiting delivery, ${failedCount} failed`
                 : "Draft — not sent yet"}
             </CardDescription>
           </CardHeader>
@@ -206,9 +287,15 @@ const WhatsAppCampaignDetail = () => {
                       : "—"}
                   </p>
                 </div>
-                {campaign?.sent && (campaign.stats?.failed ?? 0) > 0 ? (
+                {campaign?.sent && acceptedCount > 0 ? (
+                  <p className="text-sm text-amber-300">
+                    {acceptedCount} message(s) accepted by Meta but not confirmed delivered yet.
+                    Statuses update when the WhatsApp webhook reports delivery or failure.
+                  </p>
+                ) : null}
+                {campaign?.sent && failedCount > 0 ? (
                   <p className="text-sm text-amber-400">
-                    {campaign.stats?.failed} message(s) failed delivery. See failed sends below.
+                    {failedCount} message(s) failed. See failed sends below.
                   </p>
                 ) : null}
               </>
@@ -216,61 +303,47 @@ const WhatsAppCampaignDetail = () => {
           </CardContent>
         </Card>
 
-        {campaign?.sent && (campaign.stats?.failed ?? 0) > 0 ? (
+        {campaign?.sent && acceptedCount > 0 ? (
+          <Card className="glass-morphism border-white/10">
+            <CardHeader>
+              <CardTitle>Awaiting delivery</CardTitle>
+              <CardDescription>
+                Meta accepted these sends; handset delivery is not confirmed yet
+                {(campaign.undelivered_sends?.length ?? 0) < acceptedCount
+                  ? ` (showing ${campaign.undelivered_sends?.length ?? 0} of ${acceptedCount})`
+                  : ""}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(campaign.undelivered_sends?.length ?? 0) === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  Accepted count is {acceptedCount}, but no send-log rows were returned.
+                </p>
+              ) : (
+                <RecipientRows rows={campaign.undelivered_sends ?? []} />
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {campaign?.sent && failedCount > 0 ? (
           <Card className="glass-morphism border-white/10">
             <CardHeader>
               <CardTitle>Failed sends</CardTitle>
               <CardDescription>
-                Delivery errors returned by Meta for this campaign
-                {(campaign.failed_sends?.length ?? 0) < (campaign.stats?.failed ?? 0)
-                  ? ` (showing ${campaign.failed_sends?.length ?? 0} of ${campaign.stats?.failed})`
+                Errors from Meta API or delivery webhooks
+                {(campaign.failed_sends?.length ?? 0) < failedCount
+                  ? ` (showing ${campaign.failed_sends?.length ?? 0} of ${failedCount})`
                   : ""}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {(campaign.failed_sends?.length ?? 0) === 0 ? (
                 <p className="py-4 text-sm text-muted-foreground">
-                  Failed count is {campaign.stats?.failed}, but no send-log rows were returned.
+                  Failed count is {failedCount}, but no send-log rows were returned.
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Recipient</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Error</TableHead>
-                        <TableHead>Updated</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {campaign.failed_sends?.map((failure) => (
-                        <TableRow key={failure.id}>
-                          <TableCell>
-                            <div className="text-sm font-medium">
-                              {failure.user_name ||
-                                (failure.user_id ? `User #${failure.user_id}` : "Unknown")}
-                            </div>
-                            {failure.user_email ? (
-                              <div className="text-xs text-muted-foreground">{failure.user_email}</div>
-                            ) : null}
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">
-                            {failure.phone_number || "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="max-w-[360px] whitespace-pre-wrap break-words text-sm text-destructive">
-                              {failure.error_message || "Unknown error"}
-                            </div>
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                            {formatDate(failure.updated_at || failure.sent_at || failure.created_at)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <RecipientRows rows={campaign.failed_sends ?? []} showError />
               )}
             </CardContent>
           </Card>
