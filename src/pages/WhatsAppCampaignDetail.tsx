@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Reply, Send, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { WhatsAppStatsCards } from "@/components/whatsapp-campaigns/WhatsAppStatsCards";
+import { WhatsAppReplyDialog } from "@/components/whatsapp-campaigns/WhatsAppReplyDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import {
   deleteWhatsAppCampaign,
   getWhatsAppCampaign,
   sendWhatsAppCampaign,
+  WhatsAppCampaignReply,
   WhatsAppCampaignSendLogRow,
 } from "@/services/api";
 
@@ -111,6 +113,7 @@ const WhatsAppCampaignDetail = () => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [sending, setSending] = useState(false);
+  const [replyTarget, setReplyTarget] = useState<WhatsAppCampaignReply | null>(null);
 
   const campaignId = id ? Number.parseInt(id, 10) : NaN;
 
@@ -120,10 +123,12 @@ const WhatsAppCampaignDetail = () => {
     enabled: !Number.isNaN(campaignId),
     refetchInterval: (query) => {
       const stats = query.state.data?.data?.stats;
-      if (!stats) return false;
+      const campaignData = query.state.data?.data;
+      if (!campaignData?.sent) return false;
       const waiting =
-        (stats.queued ?? 0) > 0 || (stats.accepted ?? 0) > 0;
-      return waiting ? 10_000 : false;
+        (stats?.queued ?? 0) > 0 || (stats?.accepted ?? 0) > 0;
+      // Keep polling briefly after send so delivery + replies show up from the webhook.
+      return waiting ? 10_000 : 30_000;
     },
   });
 
@@ -131,6 +136,8 @@ const WhatsAppCampaignDetail = () => {
   const acceptedCount = campaign?.stats?.accepted ?? 0;
   const failedCount = campaign?.stats?.failed ?? 0;
   const deliveredCount = campaign?.stats?.delivered ?? 0;
+  const replyCount = campaign?.stats?.replies ?? campaign?.replies?.length ?? 0;
+  const replies = campaign?.replies ?? [];
 
   const handleSend = async () => {
     if (!campaign || campaign.sent) return;
@@ -352,7 +359,101 @@ const WhatsAppCampaignDetail = () => {
             </CardContent>
           </Card>
         ) : null}
+
+        {campaign?.sent ? (
+          <Card className="glass-morphism border-white/10">
+            <CardHeader>
+              <CardTitle>Conversation</CardTitle>
+              <CardDescription>
+                Inbound replies and your outbound responses
+                {replyCount > 0 || replies.length > 0
+                  ? ` (${replies.length} message${replies.length === 1 ? "" : "s"})`
+                  : ""}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {replies.length === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  No replies yet. Requires the Meta webhook to be receiving inbound messages.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Direction</TableHead>
+                        <TableHead>From / To</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Received</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {replies.map((reply: WhatsAppCampaignReply) => {
+                        const isOutbound = reply.direction === "outbound";
+                        return (
+                          <TableRow key={reply.id}>
+                            <TableCell>
+                              <Badge variant={isOutbound ? "default" : "outline"}>
+                                {isOutbound ? "You" : "Inbound"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm font-medium">
+                                {isOutbound
+                                  ? "Admin"
+                                  : reply.contact_name || "WhatsApp user"}
+                              </div>
+                              <div className="font-mono text-xs text-muted-foreground">
+                                {reply.phone_number || "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="max-w-[480px] whitespace-pre-wrap break-words text-sm">
+                                {reply.text || (
+                                  <span className="text-muted-foreground">
+                                    [{reply.message_type || "message"}]
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                              {formatDate(reply.created_at || reply.provider_timestamp)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {!isOutbound ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setReplyTarget(reply)}
+                                >
+                                  <Reply className="mr-1 h-3.5 w-3.5" />
+                                  Reply
+                                </Button>
+                              ) : null}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
+
+      <WhatsAppReplyDialog
+        reply={replyTarget}
+        open={!!replyTarget}
+        onOpenChange={(open) => {
+          if (!open) setReplyTarget(null);
+        }}
+        onSent={() => {
+          void queryClient.invalidateQueries({ queryKey: ["whatsapp-campaign", campaignId] });
+        }}
+      />
     </DashboardLayout>
   );
 };

@@ -2454,6 +2454,21 @@ export interface WhatsAppCampaignSendLogRow {
 
 export type WhatsAppCampaignFailedSend = WhatsAppCampaignSendLogRow;
 
+export interface WhatsAppCampaignReply {
+  id: number;
+  whatsapp_campaign_id: number | null;
+  campaign_key: string;
+  event_type?: string;
+  direction?: "inbound" | "outbound";
+  phone_number: string | null;
+  contact_name: string | null;
+  message_type: string | null;
+  text: string;
+  provider_message_id: string | null;
+  provider_timestamp: string | null;
+  created_at: string | null;
+}
+
 export interface WhatsAppCampaign {
   id: number;
   name: string | null;
@@ -2486,6 +2501,7 @@ export interface WhatsAppCampaign {
   };
   failed_sends?: WhatsAppCampaignFailedSend[];
   undelivered_sends?: WhatsAppCampaignSendLogRow[];
+  replies?: WhatsAppCampaignReply[];
   created_at: string | null;
   updated_at: string | null;
 }
@@ -2608,6 +2624,74 @@ export const getWhatsAppCampaign = async (
       );
     }
     return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getWhatsAppReplies = async (
+  filters: {
+    campaign_id?: number;
+    search?: string;
+    page?: number;
+    per_page?: number;
+    include_outbound?: boolean;
+  } = {}
+): Promise<{
+  success: boolean;
+  data: WhatsAppCampaignReply[];
+  meta: { current_page: number; last_page: number; per_page: number; total: number };
+} | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.campaign_id) params.set("campaign_id", String(filters.campaign_id));
+    if (filters.search) params.set("search", filters.search);
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+    if (filters.include_outbound) params.set("include_outbound", "1");
+
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/whatsapp-campaigns/replies${params.toString() ? `?${params.toString()}` : ""}`
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Failed to fetch WhatsApp replies: ${response.statusText}`)
+      );
+    }
+    return {
+      success: true,
+      data: json.data ?? [],
+      meta: json.meta ?? { current_page: 1, last_page: 1, per_page: 50, total: 0 },
+    };
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const respondToWhatsAppReply = async (payload: {
+  body: string;
+  reply_event_id?: number;
+  phone_number?: string;
+}): Promise<WhatsAppCampaignReply | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/whatsapp-campaigns/replies/respond`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Failed to send WhatsApp reply: ${response.statusText}`)
+      );
+    }
+    toast.success(json.message ?? "WhatsApp reply sent");
+    return json.data ?? null;
   } catch (error) {
     handleError(error);
     return null;

@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Edit, MessageCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Edit, MessageCircle, Plus, RefreshCw, Reply, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { WhatsAppComposeModal } from "@/components/whatsapp-campaigns/WhatsAppComposeModal";
+import { WhatsAppReplyDialog } from "@/components/whatsapp-campaigns/WhatsAppReplyDialog";
 import { WhatsAppStatsCards } from "@/components/whatsapp-campaigns/WhatsAppStatsCards";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,10 @@ import {
   createWhatsAppCampaign,
   deleteWhatsAppCampaign,
   getWhatsAppCampaigns,
+  getWhatsAppReplies,
   WhatsAppCampaign,
   WhatsAppCampaignPayload,
+  WhatsAppCampaignReply,
 } from "@/services/api";
 
 const WhatsAppMessaging = () => {
@@ -33,14 +36,22 @@ const WhatsAppMessaging = () => {
   const [composeOpen, setComposeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [replyTarget, setReplyTarget] = useState<WhatsAppCampaignReply | null>(null);
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["whatsapp-campaigns"],
     queryFn: () => getWhatsAppCampaigns({ per_page: 50 }),
   });
 
+  const { data: repliesData, isLoading: repliesLoading, refetch: refetchReplies } = useQuery({
+    queryKey: ["whatsapp-replies"],
+    queryFn: () => getWhatsAppReplies({ per_page: 20 }),
+    refetchInterval: 30_000,
+  });
+
   const campaigns = data?.data ?? [];
   const latestSent = campaigns.find((c) => c.sent) ?? null;
+  const recentReplies = repliesData?.data ?? [];
 
   const handleSaveDraft = async (payload: WhatsAppCampaignPayload) => {
     setSaving(true);
@@ -101,7 +112,14 @@ const WhatsAppMessaging = () => {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void refetch();
+                void refetchReplies();
+              }}
+              disabled={isFetching}
+            >
               <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
@@ -133,6 +151,82 @@ const WhatsAppMessaging = () => {
             <WhatsAppStatsCards campaign={latestSent} />
           </div>
         ) : null}
+
+        <Card className="glass-morphism border-white/10">
+          <CardHeader>
+            <CardTitle>Recent replies</CardTitle>
+            <CardDescription>
+              Inbound WhatsApp messages from the webhook (auto-refreshes)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {repliesLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : recentReplies.length === 0 ? (
+              <p className="py-4 text-sm text-muted-foreground">
+                No replies yet. Make sure Meta is sending inbound messages to{" "}
+                <span className="font-mono">/api/whatsapp/webhook</span>.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>From</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead>Campaign</TableHead>
+                    <TableHead>Received</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentReplies.map((reply) => (
+                    <TableRow key={reply.id}>
+                      <TableCell
+                        className={reply.whatsapp_campaign_id ? "cursor-pointer" : undefined}
+                        onClick={() => {
+                          if (reply.whatsapp_campaign_id) {
+                            navigate(`/whatsapp-messaging/${reply.whatsapp_campaign_id}`);
+                          }
+                        }}
+                      >
+                        <div className="text-sm font-medium">
+                          {reply.contact_name || "WhatsApp user"}
+                        </div>
+                        <div className="font-mono text-xs text-muted-foreground">
+                          {reply.phone_number || "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[360px] truncate text-sm">
+                          {reply.text || `[${reply.message_type || "message"}]`}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {reply.campaign_key === "inbound" ? "Unassigned" : reply.campaign_key}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                        {reply.created_at ? new Date(reply.created_at).toLocaleString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setReplyTarget(reply);
+                          }}
+                        >
+                          <Reply className="mr-1 h-3.5 w-3.5" />
+                          Reply
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="glass-morphism border-white/10">
           <CardHeader>
@@ -244,6 +338,16 @@ const WhatsAppMessaging = () => {
         sending={sending}
         onSaveDraft={handleSaveDraft}
         onSend={handleSend}
+      />
+      <WhatsAppReplyDialog
+        reply={replyTarget}
+        open={!!replyTarget}
+        onOpenChange={(open) => {
+          if (!open) setReplyTarget(null);
+        }}
+        onSent={() => {
+          void queryClient.invalidateQueries({ queryKey: ["whatsapp-replies"] });
+        }}
       />
     </DashboardLayout>
   );
