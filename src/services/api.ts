@@ -2717,6 +2717,29 @@ export const deleteWhatsAppCampaign = async (id: number): Promise<boolean> => {
   }
 };
 
+export const updateWhatsAppCampaign = async (
+  id: number,
+  payload: WhatsAppCampaignPayload
+): Promise<WhatsAppCampaign | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/whatsapp-campaigns/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Failed to update WhatsApp campaign: ${response.statusText}`)
+      );
+    }
+    toast.success(json.message ?? "WhatsApp campaign updated");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 export const sendWhatsAppCampaign = async (
   id: number
 ): Promise<{
@@ -2737,6 +2760,37 @@ export const sendWhatsAppCampaign = async (
       );
     }
     toast.success(json.message ?? "WhatsApp campaign sent");
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const retryFailedWhatsAppCampaign = async (
+  id: number,
+  sendLogIds?: number[]
+): Promise<{
+  requeued: number;
+  processed?: number;
+  sent?: number;
+  failed?: number;
+} | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/whatsapp-campaigns/${id}/retry-failed`,
+      {
+        method: "POST",
+        body: JSON.stringify(sendLogIds?.length ? { send_log_ids: sendLogIds } : {}),
+      }
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        getWhatsAppCampaignErrorMessage(json, `Failed to retry WhatsApp sends: ${response.statusText}`)
+      );
+    }
+    toast.success(json.message ?? "Failed sends retried");
     return json.data ?? null;
   } catch (error) {
     handleError(error);

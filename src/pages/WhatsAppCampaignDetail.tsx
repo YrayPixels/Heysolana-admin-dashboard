@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Reply, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Reply, RotateCcw, Send, Trash2 } from "lucide-react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { WhatsAppStatsCards } from "@/components/whatsapp-campaigns/WhatsAppStatsCards";
 import { WhatsAppReplyDialog } from "@/components/whatsapp-campaigns/WhatsAppReplyDialog";
+import { WhatsAppEditCampaignModal } from "@/components/whatsapp-campaigns/WhatsAppEditCampaignModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +22,10 @@ import {
 import {
   deleteWhatsAppCampaign,
   getWhatsAppCampaign,
+  retryFailedWhatsAppCampaign,
   sendWhatsAppCampaign,
+  updateWhatsAppCampaign,
+  WhatsAppCampaignPayload,
   WhatsAppCampaignReply,
   WhatsAppCampaignSendLogRow,
 } from "@/services/api";
@@ -113,6 +117,9 @@ const WhatsAppCampaignDetail = () => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [sending, setSending] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [replyTarget, setReplyTarget] = useState<WhatsAppCampaignReply | null>(null);
 
   const campaignId = id ? Number.parseInt(id, 10) : NaN;
@@ -158,6 +165,42 @@ const WhatsAppCampaignDetail = () => {
       }
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleSaveEdit = async (payload: WhatsAppCampaignPayload) => {
+    if (!campaign) return;
+    setSavingEdit(true);
+    try {
+      const updated = await updateWhatsAppCampaign(campaign.id, payload);
+      if (updated) {
+        setEditOpen(false);
+        await queryClient.invalidateQueries({ queryKey: ["whatsapp-campaign", campaign.id] });
+        await queryClient.invalidateQueries({ queryKey: ["whatsapp-campaigns"] });
+      }
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleRetryFailed = async () => {
+    if (!campaign || !campaign.sent || failedCount <= 0) return;
+    const ok = await confirm({
+      title: "Retry failed sends?",
+      description: `Re-send to ${failedCount} failed recipient(s) using the current campaign message?`,
+      confirmLabel: "Retry failed",
+    });
+    if (!ok) return;
+
+    setRetrying(true);
+    try {
+      const result = await retryFailedWhatsAppCampaign(campaign.id);
+      if (result) {
+        await queryClient.invalidateQueries({ queryKey: ["whatsapp-campaign", campaign.id] });
+        await queryClient.invalidateQueries({ queryKey: ["whatsapp-campaigns"] });
+      }
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -225,6 +268,14 @@ const WhatsAppCampaignDetail = () => {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditOpen(true)}
+              disabled={isLoading || !campaign}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
             {!campaign?.sent ? (
               <Button
                 className="bg-green-600 hover:bg-green-700"
@@ -233,6 +284,16 @@ const WhatsAppCampaignDetail = () => {
               >
                 <Send className="h-4 w-4 mr-2" />
                 {sending ? "Sending…" : "Send now"}
+              </Button>
+            ) : null}
+            {campaign?.sent && failedCount > 0 ? (
+              <Button
+                className="bg-amber-600 hover:bg-amber-700"
+                onClick={handleRetryFailed}
+                disabled={retrying || isLoading}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                {retrying ? "Retrying…" : `Retry failed (${failedCount})`}
               </Button>
             ) : null}
             <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
@@ -306,7 +367,8 @@ const WhatsAppCampaignDetail = () => {
                 ) : null}
                 {campaign?.sent && failedCount > 0 ? (
                   <p className="text-sm text-amber-400">
-                    {failedCount} message(s) failed. See failed sends below.
+                    {failedCount} message(s) failed. Edit the message if needed, then use Retry
+                    failed.
                   </p>
                 ) : null}
               </>
@@ -444,6 +506,13 @@ const WhatsAppCampaignDetail = () => {
         ) : null}
       </div>
 
+      <WhatsAppEditCampaignModal
+        open={editOpen}
+        campaign={campaign ?? null}
+        saving={savingEdit}
+        onOpenChange={setEditOpen}
+        onSave={handleSaveEdit}
+      />
       <WhatsAppReplyDialog
         reply={replyTarget}
         open={!!replyTarget}
