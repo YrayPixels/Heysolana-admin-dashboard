@@ -303,27 +303,31 @@ export const WhatsAppComposeModal = ({
               <Textarea
                 placeholder={
                   messageMode === "template"
-                    ? "Passed into the {{body}} template variable"
-                    : "Write your WhatsApp message..."
+                    ? "Message text — include any link here, e.g. https://…"
+                    : "Write your WhatsApp message (include any link here)..."
                 }
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
                 rows={5}
                 maxLength={1000}
               />
+              <p className="text-xs text-muted-foreground">
+                Put the URL in this message. Recipients can tap the link in the text.
+              </p>
             </div>
 
             {messageMode === "template" && (
               <div className="space-y-2">
-                <Label>Tracking / store link (optional)</Label>
+                <Label>Button redirect link (optional)</Label>
                 <Input
                   placeholder="https://play.google.com/store/apps/details?id=com.maskyray.heysolana"
                   value={appLink}
                   onChange={(event) => setAppLink(event.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Template button is static in Meta. This link is stored for tracking (`wa_campaign`) when
-                  users open via a tracked URL — not sent as a WhatsApp button parameter.
+                  Only used if Meta’s URL button is dynamic and{" "}
+                  <span className="font-mono">WHATSAPP_BUTTON_DYNAMIC=true</span>. For a normal
+                  shareable link, put it in the message above instead.
                 </p>
               </div>
             )}

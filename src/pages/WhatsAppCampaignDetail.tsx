@@ -271,8 +271,12 @@ const WhatsAppCampaignDetail = () => {
                 </div>
                 {campaign?.app_link ? (
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">App link</p>
+                    <p className="text-sm font-medium text-muted-foreground">Button redirect link</p>
                     <p className="font-mono text-sm break-all">{campaign.app_link}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Only used when Meta’s URL button is dynamic and button redirects are enabled.
+                      Prefer putting shareable links in the message body.
+                    </p>
                   </div>
                 ) : null}
                 <div>
