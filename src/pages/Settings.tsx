@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark, Bell, Share2 } from 'lucide-react';
+import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark, Bell, Share2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import {
   getProcessingFeeSettings,
@@ -34,10 +41,15 @@ const Settings = () => {
   const [emailTwitterUrl, setEmailTwitterUrl] = useState('');
   const [emailTelegramUrl, setEmailTelegramUrl] = useState('');
   const [emailCommunityUrl, setEmailCommunityUrl] = useState('');
+  const [whatsappButtonDynamic, setWhatsappButtonDynamic] = useState(true);
+  const [whatsappReplyEmailNotify, setWhatsappReplyEmailNotify] = useState(true);
+  const [whatsappButtonMode, setWhatsappButtonMode] = useState<'redirect' | 'suffix'>('redirect');
+  const [whatsappButtonUrlBase, setWhatsappButtonUrlBase] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingHeyPoints, setSavingHeyPoints] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
   const [savingEmailSocial, setSavingEmailSocial] = useState(false);
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['processing-fee-settings'],
@@ -65,6 +77,12 @@ const Settings = () => {
       setEmailTwitterUrl(settings.email_twitter_url ?? '');
       setEmailTelegramUrl(settings.email_telegram_url ?? '');
       setEmailCommunityUrl(settings.email_community_url ?? '');
+      setWhatsappButtonDynamic((settings.whatsapp_button_dynamic ?? '1') === '1');
+      setWhatsappReplyEmailNotify((settings.whatsapp_reply_email_notify ?? '1') === '1');
+      setWhatsappButtonMode(
+        settings.whatsapp_button_mode === 'suffix' ? 'suffix' : 'redirect'
+      );
+      setWhatsappButtonUrlBase(settings.whatsapp_button_url_base ?? '');
     }
   }, [settings]);
 
@@ -87,6 +105,20 @@ const Settings = () => {
       email_community_url: emailCommunityUrl.trim(),
     });
     setSavingEmailSocial(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+    }
+  };
+
+  const handleSaveWhatsapp = async () => {
+    setSavingWhatsapp(true);
+    const result = await updateProcessingFeeSettings({
+      whatsapp_button_dynamic: whatsappButtonDynamic ? '1' : '0',
+      whatsapp_reply_email_notify: whatsappReplyEmailNotify ? '1' : '0',
+      whatsapp_button_mode: whatsappButtonMode,
+      whatsapp_button_url_base: whatsappButtonUrlBase.trim(),
+    });
+    setSavingWhatsapp(false);
     if (result) {
       queryClient.setQueryData(['processing-fee-settings'], result);
     }
@@ -202,6 +234,95 @@ const Settings = () => {
                 <Button onClick={handleSaveNotifications} disabled={savingNotifications} className="w-fit">
                   <Save className="mr-2 h-4 w-4" />
                   {savingNotifications ? 'Saving...' : 'Save notification email'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              WhatsApp messaging
+            </CardTitle>
+            <CardDescription>
+              Controls campaign button parameters and email alerts for inbound replies. Overrides
+              .env when saved here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4 max-w-md">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <div className="grid gap-6 max-w-lg">
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="wa-button-dynamic">Dynamic URL button parameter</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Required when the Meta template URL button includes {"{{1}}"}.
+                    </p>
+                  </div>
+                  <Switch
+                    id="wa-button-dynamic"
+                    checked={whatsappButtonDynamic}
+                    onCheckedChange={setWhatsappButtonDynamic}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="wa-reply-email">Email on WhatsApp reply</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Sends to the admin notification email when someone replies.
+                    </p>
+                  </div>
+                  <Switch
+                    id="wa-reply-email"
+                    checked={whatsappReplyEmailNotify}
+                    onCheckedChange={setWhatsappReplyEmailNotify}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Button mode</Label>
+                  <Select
+                    value={whatsappButtonMode}
+                    onValueChange={(value) =>
+                      setWhatsappButtonMode(value === 'suffix' ? 'suffix' : 'redirect')
+                    }
+                  >
+                    <SelectTrigger className="bg-white/5 border-white/10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="redirect">
+                        Redirect — /api/whatsapp/r/{"{{campaign_key}}"}
+                      </SelectItem>
+                      <SelectItem value="suffix">
+                        Suffix — append onto Meta button base URL
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wa-button-base">Button URL base</Label>
+                  <Input
+                    id="wa-button-base"
+                    type="url"
+                    placeholder="https://api.example.com/api/whatsapp/r/"
+                    value={whatsappButtonUrlBase}
+                    onChange={(e) => setWhatsappButtonUrlBase(e.target.value)}
+                    className="bg-white/5 border-white/10"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Must match the Meta template URL before {"{{1}}"}. Use your public API host.
+                  </p>
+                </div>
+                <Button onClick={handleSaveWhatsapp} disabled={savingWhatsapp} className="w-fit">
+                  <Save className="mr-2 h-4 w-4" />
+                  {savingWhatsapp ? 'Saving...' : 'Save WhatsApp settings'}
                 </Button>
               </div>
             )}

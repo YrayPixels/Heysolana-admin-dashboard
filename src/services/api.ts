@@ -1447,6 +1447,14 @@ export interface ProcessingFeeSettings {
   support_inbox_email: string;
   /** Primary email for admin dashboard alerts (new users, transactions, etc.) */
   admin_notification_email: string;
+  /** Send Meta URL button {{1}} parameter (1/0) */
+  whatsapp_button_dynamic: string;
+  /** Email admin when WhatsApp replies arrive (1/0) */
+  whatsapp_reply_email_notify: string;
+  /** redirect | suffix */
+  whatsapp_button_mode: string;
+  /** Meta dynamic button base URL before {{1}} */
+  whatsapp_button_url_base: string;
   /** Master switch for Hey Points (cashback earn + redeem in wallet). */
   hey_points_enabled: string;
   airtime_cashback_enabled: string;
@@ -3072,6 +3080,10 @@ export const updateProcessingFeeSettings = async (
     email_twitter_url?: string;
     email_telegram_url?: string;
     email_community_url?: string;
+    whatsapp_button_dynamic?: '0' | '1';
+    whatsapp_reply_email_notify?: '0' | '1';
+    whatsapp_button_mode?: 'redirect' | 'suffix';
+    whatsapp_button_url_base?: string;
   }>
 ): Promise<ProcessingFeeSettings | null> => {
   try {
