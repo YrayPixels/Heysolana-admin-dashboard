@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark, Bell, Share2, MessageCircle } from 'lucide-react';
+import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark, Bell, Share2, MessageCircle, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +26,7 @@ const Settings = () => {
   const [fixedNgn, setFixedNgn] = useState('');
   const [fixedUsd, setFixedUsd] = useState('');
   const [treasury, setTreasury] = useState('');
+  const [heliusApiKey, setHeliusApiKey] = useState('');
   const [deliveryFeeJumiaNgn, setDeliveryFeeJumiaNgn] = useState('');
   const [deliveryFeeCrossmintUsd, setDeliveryFeeCrossmintUsd] = useState('');
   const [jupiterReferralAccount, setJupiterReferralAccount] = useState('');
@@ -46,6 +47,7 @@ const Settings = () => {
   const [whatsappButtonMode, setWhatsappButtonMode] = useState<'redirect' | 'suffix'>('redirect');
   const [whatsappButtonUrlBase, setWhatsappButtonUrlBase] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingRpc, setSavingRpc] = useState(false);
   const [savingHeyPoints, setSavingHeyPoints] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
   const [savingEmailSocial, setSavingEmailSocial] = useState(false);
@@ -62,6 +64,7 @@ const Settings = () => {
       setFixedNgn(settings.processing_fee_fixed_ngn ?? '');
       setFixedUsd(settings.processing_fee_fixed_usd ?? '');
       setTreasury(settings.treasury_wallet_address ?? '');
+      setHeliusApiKey(settings.helius_api_key ?? '');
       setDeliveryFeeJumiaNgn(settings.delivery_fee_jumia_ngn ?? '');
       setDeliveryFeeCrossmintUsd(settings.delivery_fee_crossmint_usd ?? '');
       setJupiterReferralAccount(settings.jupiter_referral_account ?? '');
@@ -119,6 +122,17 @@ const Settings = () => {
       whatsapp_button_url_base: whatsappButtonUrlBase.trim(),
     });
     setSavingWhatsapp(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+    }
+  };
+
+  const handleSaveRpc = async () => {
+    setSavingRpc(true);
+    const result = await updateProcessingFeeSettings({
+      helius_api_key: heliusApiKey.trim(),
+    });
+    setSavingRpc(false);
     if (result) {
       queryClient.setQueryData(['processing-fee-settings'], result);
     }
@@ -498,6 +512,46 @@ const Settings = () => {
                     </Button>
                   </>
                 )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Network className="h-5 w-5" />
+              Solana RPC (Helius)
+            </CardTitle>
+            <CardDescription>
+              API key used by the wallet for Solana RPC, balances, token metadata, and transaction history.
+              The wallet reads this from the public settings API (falls back to its build-time env key if unset).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-10 w-full max-w-md" />
+            ) : (
+              <div className="grid gap-4 max-w-md">
+                <div className="space-y-2">
+                  <Label htmlFor="helius-api-key">Helius API key</Label>
+                  <Input
+                    id="helius-api-key"
+                    type="password"
+                    autoComplete="off"
+                    placeholder="Your Helius API key"
+                    value={heliusApiKey}
+                    onChange={(e) => setHeliusApiKey(e.target.value)}
+                    className="bg-white/5 border-white/10 font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    From the Helius dashboard. Leave empty to clear and fall back to the wallet env key.
+                  </p>
+                </div>
+                <Button onClick={handleSaveRpc} disabled={savingRpc} className="w-fit">
+                  <Save className="mr-2 h-4 w-4" />
+                  {savingRpc ? 'Saving...' : 'Save RPC settings'}
+                </Button>
               </div>
             )}
           </CardContent>

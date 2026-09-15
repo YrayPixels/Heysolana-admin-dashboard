@@ -1431,6 +1431,8 @@ export interface ProcessingFeeSettings {
   processing_fee_fixed_ngn: string;
   processing_fee_fixed_usd: string;
   treasury_wallet_address: string;
+  /** Helius RPC / DAS API key used by the wallet app */
+  helius_api_key: string;
   delivery_fee_jumia_ngn: string;
   delivery_fee_crossmint_usd: string;
   /** Jupiter referral account pubkey for swap integrator fees */
@@ -3058,6 +3060,7 @@ export const updateProcessingFeeSettings = async (
     processing_fee_fixed_ngn: number;
     processing_fee_fixed_usd: number;
     treasury_wallet_address: string;
+    helius_api_key: string;
     delivery_fee_jumia_ngn: number;
     delivery_fee_crossmint_usd: number;
     jupiter_referral_account: string;
