@@ -802,6 +802,10 @@ export interface User {
   last_active_at?: string | null;
   last_active_days?: number | null;
   active_device_count?: number;
+  /** Most recently used device app version */
+  app_version?: string | null;
+  /** Distinct app versions across active devices */
+  app_versions?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -1576,6 +1580,7 @@ export interface PushRecipient {
   phone_number: string | null;
   username: string | null;
   device_type: "ios" | "android";
+  app_version?: string | null;
   is_active: boolean;
   push_token_preview: string;
   last_used_at: string | null;
@@ -1586,6 +1591,7 @@ export interface PushRecipient {
 export interface PushRecipientsFilters {
   search?: string;
   device_type?: "ios" | "android" | "all";
+  app_version?: string;
   phone_number?: string;
   user_id?: number;
   active_only?: boolean;
@@ -1615,6 +1621,7 @@ export interface PushPreviewResponse {
 export interface AdminSendPushPayload {
   title: string;
   body: string;
+  app_version?: string;
   target: "all" | "filtered" | "selected";
   device_type?: "ios" | "android";
   search?: string;
@@ -1636,6 +1643,7 @@ export const getPushRecipients = async (
     if (filters.device_type && filters.device_type !== "all") {
       params.set("device_type", filters.device_type);
     }
+    if (filters.app_version) params.set("app_version", filters.app_version);
     if (filters.phone_number) params.set("phone_number", filters.phone_number);
     if (filters.user_id) params.set("user_id", String(filters.user_id));
     if (filters.active_only === false) params.set("active_only", "0");
@@ -1649,6 +1657,31 @@ export const getPushRecipients = async (
     const response = await authenticatedFetch(url);
     if (!response.ok) {
       throw new Error(`Failed to fetch recipients: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export interface PushAppVersionsResponse {
+  versions: string[];
+  unknown_count: number;
+}
+
+export const getPushAppVersions = async (
+  activeOnly = true
+): Promise<PushAppVersionsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (!activeOnly) params.set("active_only", "0");
+    const url = `${API_BASE_URL}/admin/notifications/app-versions${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch app versions: ${response.statusText}`);
     }
     return await response.json();
   } catch (error) {
@@ -2149,6 +2182,7 @@ export interface PushCampaign {
   link: string | null;
   target: PushCampaignTarget;
   device_type: "ios" | "android" | null;
+  app_version: string | null;
   search: string | null;
   token_ids: number[];
   phone_numbers: string[];
@@ -2174,6 +2208,7 @@ export interface PushCampaignPayload {
   link?: string | null;
   target: PushCampaignTarget;
   device_type?: "ios" | "android" | null;
+  app_version?: string | null;
   search?: string | null;
   token_ids?: number[];
   phone_numbers?: string[];

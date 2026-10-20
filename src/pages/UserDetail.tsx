@@ -213,6 +213,9 @@ const UserDetail = () => {
                         {user.active_device_count} active device(s)
                       </Badge>
                     )}
+                    {user.app_version && (
+                      <Badge variant="outline">App v{user.app_version}</Badge>
+                    )}
                   </div>
                 </>
               ) : (
@@ -569,6 +572,24 @@ const UserDetail = () => {
                     <p>{formatLastActive(user)}</p>
                   </div>
                   <div>
+                    <p className="text-muted-foreground">App version</p>
+                    <p>
+                      {user.app_version ? (
+                        <>
+                          v{user.app_version}
+                          {(user.app_versions?.length ?? 0) > 1 && (
+                            <span className="text-muted-foreground">
+                              {' '}
+                              ({user.app_versions!.map((v) => `v${v}`).join(', ')})
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-muted-foreground">Registered</p>
                     <p className="flex items-center gap-2">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
@@ -603,7 +624,14 @@ const UserDetail = () => {
                           className="flex items-center justify-between rounded-md border p-3 text-sm"
                         >
                           <div>
-                            <p className="font-medium capitalize">{device.device_type}</p>
+                            <p className="font-medium capitalize">
+                              {device.device_type}
+                              {device.app_version ? (
+                                <span className="ml-2 font-mono text-xs text-muted-foreground">
+                                  v{device.app_version}
+                                </span>
+                              ) : null}
+                            </p>
                             <p className="text-xs text-muted-foreground font-mono">
                               {device.push_token_preview}
                             </p>

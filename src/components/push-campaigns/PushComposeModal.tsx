@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ConfirmDialog";
 import {
+  getPushAppVersions,
   getPushRecipients,
   previewAdminPush,
   PushCampaign,
@@ -48,6 +49,7 @@ const emptyForm = {
   link: "",
   search: "",
   deviceFilter: "all" as "all" | "ios" | "android",
+  versionFilter: "all",
   targetMode: "filtered" as TargetMode,
   selectedIds: [] as number[],
 };
@@ -60,6 +62,7 @@ const buildInitialForm = (campaign?: PushCampaign | null) => {
     link: campaign.link ?? "",
     search: campaign.search ?? "",
     deviceFilter: campaign.device_type ?? ("all" as const),
+    versionFilter: campaign.app_version ?? "all",
     targetMode: campaign.target,
     selectedIds: campaign.token_ids ?? [],
   };
@@ -94,6 +97,7 @@ export const PushComposeModal = ({
   const [deviceFilter, setDeviceFilter] = useState<"all" | "ios" | "android">(
     emptyForm.deviceFilter
   );
+  const [versionFilter, setVersionFilter] = useState(emptyForm.versionFilter);
   const [targetMode, setTargetMode] = useState<TargetMode>(emptyForm.targetMode);
   const [selectedIds, setSelectedIds] = useState<number[]>(emptyForm.selectedIds);
   const [page, setPage] = useState(1);
@@ -116,7 +120,7 @@ export const PushComposeModal = ({
     if (targetMode !== "selected") {
       setSelectedIds([]);
     }
-  }, [debouncedSearch, deviceFilter, targetMode, open]);
+  }, [debouncedSearch, deviceFilter, versionFilter, targetMode, open]);
 
   useEffect(() => {
     if (!open) {
@@ -126,6 +130,7 @@ export const PushComposeModal = ({
       setSearch(emptyForm.search);
       setDebouncedSearch("");
       setDeviceFilter(emptyForm.deviceFilter);
+      setVersionFilter(emptyForm.versionFilter);
       setTargetMode(emptyForm.targetMode);
       setSelectedIds(emptyForm.selectedIds);
       setPage(1);
@@ -140,21 +145,26 @@ export const PushComposeModal = ({
     setSearch(initial.search);
     setDebouncedSearch(initial.search.trim());
     setDeviceFilter(initial.deviceFilter);
+    setVersionFilter(initial.versionFilter);
     setTargetMode(initial.targetMode);
     setSelectedIds(initial.selectedIds);
     setPage(1);
     setPreview(null);
   }, [open, campaign]);
 
+  const resolvedAppVersion =
+    versionFilter !== "all" ? versionFilter : undefined;
+
   const buildPayloadBase = useCallback(
     () => ({
       target: targetMode,
       device_type: deviceFilter !== "all" ? deviceFilter : undefined,
+      app_version: resolvedAppVersion,
       search: targetMode === "filtered" && debouncedSearch ? debouncedSearch : undefined,
       token_ids: targetMode === "selected" ? selectedIds : undefined,
       active_only: true,
     }),
-    [targetMode, deviceFilter, debouncedSearch, selectedIds]
+    [targetMode, deviceFilter, resolvedAppVersion, debouncedSearch, selectedIds]
   );
 
   const buildCampaignPayload = useCallback(
@@ -164,20 +174,35 @@ export const PushComposeModal = ({
       link: link.trim() || null,
       target: targetMode,
       device_type: deviceFilter !== "all" ? deviceFilter : null,
+      app_version: resolvedAppVersion ?? null,
       search: targetMode === "filtered" && debouncedSearch ? debouncedSearch : null,
       token_ids: targetMode === "selected" ? selectedIds : undefined,
       active_only: true,
       send_now: sendNow,
     }),
-    [title, body, link, targetMode, deviceFilter, debouncedSearch, selectedIds]
+    [title, body, link, targetMode, deviceFilter, resolvedAppVersion, debouncedSearch, selectedIds]
   );
 
+  const { data: versionsData } = useQuery({
+    queryKey: ["push-app-versions", open],
+    queryFn: () => getPushAppVersions(true),
+    enabled: open,
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ["push-recipients-compose", debouncedSearch, deviceFilter, page, open],
+    queryKey: [
+      "push-recipients-compose",
+      debouncedSearch,
+      deviceFilter,
+      versionFilter,
+      page,
+      open,
+    ],
     queryFn: () =>
       getPushRecipients({
         search: debouncedSearch || undefined,
         device_type: deviceFilter,
+        app_version: resolvedAppVersion,
         page,
         per_page: 10,
       }),
@@ -372,9 +397,30 @@ export const PushComposeModal = ({
                       <SelectValue placeholder="Platform" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="all">All platforms</SelectItem>
                       <SelectItem value="ios">iOS</SelectItem>
                       <SelectItem value="android">Android</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={versionFilter}
+                    onValueChange={setVersionFilter}
+                  >
+                    <SelectTrigger className="w-full sm:w-[160px]">
+                      <SelectValue placeholder="App version" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All versions</SelectItem>
+                      {(versionsData?.unknown_count ?? 0) > 0 && (
+                        <SelectItem value="unknown">
+                          Unknown ({versionsData?.unknown_count})
+                        </SelectItem>
+                      )}
+                      {(versionsData?.versions ?? []).map((version) => (
+                        <SelectItem key={version} value={version}>
+                          v{version}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -405,12 +451,13 @@ export const PushComposeModal = ({
                             <TableHead>User</TableHead>
                             <TableHead>Phone</TableHead>
                             <TableHead>Platform</TableHead>
+                            <TableHead>Version</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {recipients.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                              <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
                                 No devices match filters
                               </TableCell>
                             </TableRow>
@@ -433,6 +480,9 @@ export const PushComposeModal = ({
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant="outline">{r.device_type}</Badge>
+                                </TableCell>
+                                <TableCell className="font-mono text-xs">
+                                  {r.app_version ? `v${r.app_version}` : "—"}
                                 </TableCell>
                               </TableRow>
                             ))
@@ -473,10 +523,33 @@ export const PushComposeModal = ({
                 ) : null}
               </>
             ) : (
-              <p className="text-sm text-muted-foreground rounded-lg border border-white/10 p-4">
-                This push will be sent to every active registered device. Use filtered or selected
-                mode to narrow the audience.
-              </p>
+              <div className="space-y-3 rounded-lg border border-white/10 p-4">
+                <p className="text-sm text-muted-foreground">
+                  Send to every active registered device
+                  {resolvedAppVersion
+                    ? ` on app version ${resolvedAppVersion === "unknown" ? "unknown" : `v${resolvedAppVersion}`}`
+                    : ""}
+                  . Use filtered or selected mode to narrow further.
+                </p>
+                <Select value={versionFilter} onValueChange={setVersionFilter}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="App version" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All versions</SelectItem>
+                    {(versionsData?.unknown_count ?? 0) > 0 && (
+                      <SelectItem value="unknown">
+                        Unknown ({versionsData?.unknown_count})
+                      </SelectItem>
+                    )}
+                    {(versionsData?.versions ?? []).map((version) => (
+                      <SelectItem key={version} value={version}>
+                        v{version}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
           </div>
         </div>

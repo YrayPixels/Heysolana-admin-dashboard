@@ -217,6 +217,14 @@ const PushCampaignDetail = () => {
                   {campaign?.device_type ? (
                     <p className="text-sm text-muted-foreground">Platform: {campaign.device_type}</p>
                   ) : null}
+                  {campaign?.app_version ? (
+                    <p className="text-sm text-muted-foreground">
+                      App version:{" "}
+                      {campaign.app_version === "unknown"
+                        ? "Unknown"
+                        : `v${campaign.app_version}`}
+                    </p>
+                  ) : null}
                 </div>
               </>
             )}

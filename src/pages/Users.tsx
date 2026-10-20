@@ -564,6 +564,7 @@ const Users = () => {
                         <TableHead>Status</TableHead>
                         <TableHead>Wallet Status</TableHead>
                         <TableHead>PIN Status</TableHead>
+                        <TableHead>App version</TableHead>
                         <TableHead 
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleSort('last_active_at')}
@@ -668,6 +669,16 @@ const Users = () => {
                           </TableCell>
                           <TableCell>
                             {getPinStatusBadge(user.pin)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm font-mono">
+                              {user.app_version ? `v${user.app_version}` : '—'}
+                              {(user.app_versions?.length ?? 0) > 1 && (
+                                <div className="text-xs text-muted-foreground font-sans">
+                                  +{user.app_versions!.length - 1} more
+                                </div>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
