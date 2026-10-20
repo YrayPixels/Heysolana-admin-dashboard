@@ -22,6 +22,8 @@ import {
   Store,
   User,
   Users,
+  UserX,
+  Wallet,
   X,
   TrendingUp,
 } from "lucide-react";
@@ -66,6 +68,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Users & Access",
     items: [
       { name: "Users", icon: <Users className="h-5 w-5" />, path: "/users" },
+      { name: "Account deletions", icon: <UserX className="h-5 w-5" />, path: "/account-deletions" },
       { name: "Admin users", icon: <ShieldCheck className="h-5 w-5" />, path: "/admins" },
       { name: "Merchants", icon: <Store className="h-5 w-5" />, path: "/merchants" },
     ],
@@ -100,6 +103,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "System",
     items: [
+      { name: "Wallet types", icon: <Wallet className="h-5 w-5" />, path: "/wallet-types" },
+      { name: "KYC types", icon: <ShieldCheck className="h-5 w-5" />, path: "/kyc-types" },
       { name: "Settings", icon: <Settings className="h-5 w-5" />, path: "/settings" },
       { name: "Profile", icon: <User className="h-5 w-5" />, path: "/profile" },
     ],

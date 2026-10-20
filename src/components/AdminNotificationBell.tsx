@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, CheckCheck, Headphones, ReceiptText, UserPlus } from 'lucide-react';
+import { Bell, CheckCheck, Headphones, ReceiptText, UserPlus, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -35,6 +35,8 @@ function notificationIcon(type: AdminInboxNotificationType) {
       return ReceiptText;
     case 'support_message':
       return Headphones;
+    case 'account_deletion':
+      return UserX;
     default:
       return Bell;
   }
@@ -48,6 +50,8 @@ function notificationAccent(type: AdminInboxNotificationType) {
       return 'text-green-400';
     case 'support_message':
       return 'text-purple-400';
+    case 'account_deletion':
+      return 'text-red-400';
     default:
       return 'text-muted-foreground';
   }

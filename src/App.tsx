@@ -20,6 +20,8 @@ import JumiaOrderDetail from "./pages/JumiaOrderDetail";
 import CrossmintOrderDetail from "./pages/CrossmintOrderDetail";
 import ChowdeckOrderDetail from "./pages/ChowdeckOrderDetail";
 import Settings from "./pages/Settings";
+import WalletTypes from "./pages/WalletTypes";
+import KycTypes from "./pages/KycTypes";
 import Admins from "./pages/Admins";
 import Merchants from "./pages/Merchants";
 import PushNotifications from "./pages/PushNotifications";
@@ -39,6 +41,7 @@ import BugReports from "./pages/BugReports";
 import BugReportDetail from "./pages/BugReportDetail";
 import SupportInbox from "./pages/SupportInbox";
 import SupportConversationDetail from "./pages/SupportConversationDetail";
+import AccountDeletions from "./pages/AccountDeletions";
 import NotFound from "./pages/NotFound";
 import { isMerchantMode } from "./lib/appMode";
 import {
@@ -160,6 +163,15 @@ const AppRoutes = () => {
       />
 
       <Route
+        path="/account-deletions"
+        element={
+          <ProtectedRoute>
+            <AccountDeletions />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/orders"
         element={
           <ProtectedRoute>
@@ -227,6 +239,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/wallet-types"
+        element={
+          <ProtectedRoute>
+            <WalletTypes />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/kyc-types"
+        element={
+          <ProtectedRoute>
+            <KycTypes />
           </ProtectedRoute>
         }
       />

@@ -1491,7 +1491,12 @@ export const getProcessingFeeSettings = async (): Promise<ProcessingFeeSettings 
 
 // ============ Admin Inbox Notifications ============
 
-export type AdminInboxNotificationType = 'new_user' | 'transaction' | 'support_message';
+export type AdminInboxNotificationType =
+  | 'new_user'
+  | 'transaction'
+  | 'support_message'
+  | 'whatsapp_reply'
+  | 'account_deletion';
 
 export interface AdminInboxNotification {
   id: number;
@@ -3282,6 +3287,112 @@ export const clearBugReports = async (scope: 'fixed' | 'all'): Promise<number> =
   }
 };
 
+// ============ Account deletion requests ============
+
+export type AccountDeletionStatus = 'pending' | 'processing' | 'completed' | 'rejected';
+
+export interface AccountDeletionRequest {
+  id: number;
+  addressbook_id: number | null;
+  username: string;
+  phone_number: string | null;
+  email: string | null;
+  wallet_address: string | null;
+  reason: string | null;
+  status: AccountDeletionStatus;
+  admin_notes: string | null;
+  processed_by: number | null;
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountDeletionRequestsResponse {
+  success: boolean;
+  data: AccountDeletionRequest[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+export interface AccountDeletionStats {
+  pending: number;
+  processing: number;
+  completed: number;
+  rejected: number;
+  total: number;
+}
+
+export const getAccountDeletionRequests = async (filters: {
+  status?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+} = {}): Promise<AccountDeletionRequestsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.per_page) params.set('per_page', String(filters.per_page));
+    const url = `${API_BASE_URL}/admin/account-deletion-requests${
+      params.toString() ? `?${params.toString()}` : ''
+    }`;
+    const response = await authenticatedFetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch deletion requests: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getAccountDeletionStats = async (): Promise<AccountDeletionStats | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/account-deletion-requests/stats`
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch deletion stats: ${response.statusText}`);
+    }
+    const json = await response.json();
+    return json.data ?? null;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateAccountDeletionStatus = async (
+  id: number,
+  status: AccountDeletionStatus,
+  admin_notes?: string
+): Promise<{ success: boolean; data: AccountDeletionRequest } | null> => {
+  try {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/admin/account-deletion-requests/${id}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status, admin_notes }),
+      }
+    );
+    const json = await response.json();
+    if (!response.ok) {
+      throw new Error(json.message || `Failed to update request: ${response.statusText}`);
+    }
+    toast.success('Deletion request updated');
+    return json;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 // ---- Support chat ----
 
 export type SupportConversationStatus = 'open' | 'resolved' | 'closed';
@@ -3800,3 +3911,234 @@ export const uploadAppRegistrationAsset = async (
   }
 };
 
+
+// --- Multiwallet catalog (KYC types + wallet types) ---
+
+export type KycFieldKind = "text" | "number" | "date" | "select" | "image" | "document";
+
+export interface AdminKycType {
+  id: number;
+  slug: string;
+  name: string;
+  description?: string | null;
+  field_kind: KycFieldKind;
+  validation?: Record<string, unknown> | null;
+  example_image_path?: string | null;
+  example_image_url?: string | null;
+  provider_key?: string | null;
+  status: string;
+  sort_order: number;
+  required?: boolean;
+  pivot_sort_order?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AdminWalletType {
+  id: number;
+  slug: string;
+  name: string;
+  description?: string | null;
+  icon_path?: string | null;
+  icon_url?: string | null;
+  category: "crypto" | "fiat";
+  network?: string | null;
+  status: string;
+  provider: string;
+  provider_config?: Record<string, unknown> | null;
+  allows_multiple: boolean;
+  is_builtin: boolean;
+  sort_order: number;
+  kyc_types?: AdminKycType[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const fetchKycTypes = async (): Promise<AdminKycType[]> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/kyc-types`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Failed to fetch KYC types");
+    }
+    const data = await response.json();
+    return data.kyc_types || [];
+  } catch (error) {
+    handleError(error);
+    return [];
+  }
+};
+
+export const createKycType = async (payload: {
+  name: string;
+  slug?: string;
+  description?: string;
+  field_kind: KycFieldKind;
+  provider_key?: string | null;
+  validation?: Record<string, unknown> | null;
+  status?: string;
+  sort_order?: number;
+}): Promise<AdminKycType | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/kyc-types`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to create KYC type");
+    toast.success(data.message || "KYC type created");
+    return data.kyc_type as AdminKycType;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateKycType = async (
+  id: number,
+  payload: Partial<{
+    name: string;
+    slug: string;
+    description: string | null;
+    field_kind: KycFieldKind;
+    provider_key: string | null;
+    validation: Record<string, unknown> | null;
+    status: string;
+    sort_order: number;
+  }>
+): Promise<AdminKycType | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/kyc-types/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to update KYC type");
+    toast.success(data.message || "KYC type updated");
+    return data.kyc_type as AdminKycType;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deleteKycType = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/kyc-types/${id}`, {
+      method: "DELETE",
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to delete KYC type");
+    toast.success(data.message || "KYC type deleted");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
+export const fetchWalletTypes = async (): Promise<AdminWalletType[]> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/wallet-types`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Failed to fetch wallet types");
+    }
+    const data = await response.json();
+    return data.wallet_types || [];
+  } catch (error) {
+    handleError(error);
+    return [];
+  }
+};
+
+export const createWalletType = async (payload: {
+  name: string;
+  slug?: string;
+  description?: string;
+  category: "crypto" | "fiat";
+  network?: string | null;
+  status?: string;
+  provider?: string;
+  provider_config?: Record<string, unknown> | null;
+  allows_multiple?: boolean;
+  sort_order?: number;
+}): Promise<AdminWalletType | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/wallet-types`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to create wallet type");
+    toast.success(data.message || "Wallet type created");
+    return data.wallet_type as AdminWalletType;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const updateWalletType = async (
+  id: number,
+  payload: Partial<{
+    name: string;
+    slug: string;
+    description: string | null;
+    category: "crypto" | "fiat";
+    network: string | null;
+    status: string;
+    provider: string;
+    provider_config: Record<string, unknown> | null;
+    allows_multiple: boolean;
+    sort_order: number;
+  }>
+): Promise<AdminWalletType | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/wallet-types/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to update wallet type");
+    toast.success(data.message || "Wallet type updated");
+    return data.wallet_type as AdminWalletType;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const deleteWalletType = async (id: number): Promise<boolean> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/wallet-types/${id}`, {
+      method: "DELETE",
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to delete wallet type");
+    toast.success(data.message || "Wallet type deleted");
+    return true;
+  } catch (error) {
+    handleError(error);
+    return false;
+  }
+};
+
+export const syncWalletTypeKyc = async (
+  id: number,
+  kyc: Array<{ kyc_type_id: number; required?: boolean; sort_order?: number }>
+): Promise<AdminWalletType | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/wallet-types/${id}/kyc`, {
+      method: "PUT",
+      body: JSON.stringify({ kyc }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to update KYC requirements");
+    toast.success(data.message || "KYC requirements updated");
+    return data.wallet_type as AdminWalletType;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
