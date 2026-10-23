@@ -767,6 +767,106 @@ export interface UserDistributionData {
   growth_rate: number;
 }
 
+// ============ Investor view-only summary ============
+
+export interface InvestorShareLink {
+  enabled: boolean;
+  token?: string | null;
+  share_url: string | null;
+  path: string | null;
+  message?: string | null;
+}
+
+export interface InvestorSummaryResponse {
+  success: boolean;
+  generated_at: string;
+  days: number;
+  cluster: string;
+  transactions: {
+    available: boolean;
+    message?: string;
+    summary: TransactionMetricsSummary | null;
+    by_day: TransactionMetricByDay[];
+    by_type: TransactionMetricByType[];
+    by_app: Array<{ label: string; count: number; volume_usd: number; fee_usd: number }>;
+    by_provider: Array<{ label: string; count: number; volume_usd: number; fee_usd: number }>;
+  };
+  users: {
+    available: boolean;
+    total_users: number;
+    recent_registrations_30d: number;
+    growth_rate_pct: number;
+    country_distribution: CountryDistribution[];
+    registration_trends: RegistrationTrend[];
+    verification_status: VerificationStatus[];
+    wallet_status: WalletStatus[];
+  };
+  engagement: {
+    available: boolean;
+    summary: EngagementSummary | null;
+    dau_series: EngagementDauPoint[];
+  };
+  recent_transactions: Array<{
+    id: number;
+    cluster: string;
+    transaction_type: string;
+    provider: string | null;
+    app_called: string | null;
+    input_token_symbol: string | null;
+    input_amount_usd: number | null;
+    output_token_symbol: string | null;
+    output_amount_usd: number | null;
+    platform_fee_usd: number | null;
+    confirmed_at: string | null;
+    created_at: string | null;
+  }>;
+}
+
+export const getInvestorShareLink = async (): Promise<InvestorShareLink | null> => {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/admin/investor-view`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch investor share link: ${response.statusText}`);
+    }
+    return (await response.json()) as InvestorShareLink;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
+export const getInvestorSummary = async (
+  token: string,
+  days: 7 | 30 | 90 = 30,
+  cluster: TransactionMetricsCluster = "mainnet"
+): Promise<InvestorSummaryResponse | null> => {
+  try {
+    const params = new URLSearchParams({
+      days: String(days),
+      cluster,
+    });
+    const response = await fetch(`${API_BASE_URL}/investor/summary?${params.toString()}`, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Investor-Token": token,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        (errorData as { message?: string }).message ||
+          `Failed to fetch investor summary: ${response.statusText}`
+      );
+    }
+
+    return (await response.json()) as InvestorSummaryResponse;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 // Get user distribution analytics
 export const getUserDistributionAnalytics = async (): Promise<UserDistributionData | null> => {
   try {
@@ -1461,6 +1561,8 @@ export interface ProcessingFeeSettings {
   whatsapp_button_mode: string;
   /** Meta dynamic button base URL before {{1}} */
   whatsapp_button_url_base: string;
+  /** Secret path token for the view-only investor dashboard URL */
+  investor_view_token: string;
   /** Master switch for Hey Points (cashback earn + redeem in wallet). */
   hey_points_enabled: string;
   airtime_cashback_enabled: string;
@@ -3127,6 +3229,7 @@ export const updateProcessingFeeSettings = async (
     whatsapp_reply_email_notify?: '0' | '1';
     whatsapp_button_mode?: 'redirect' | 'suffix';
     whatsapp_button_url_base?: string;
+    investor_view_token?: string;
   }>
 ): Promise<ProcessingFeeSettings | null> => {
   try {

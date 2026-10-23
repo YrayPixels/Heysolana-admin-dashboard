@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark, Bell, Share2, MessageCircle, Network } from 'lucide-react';
+import { Save, Percent, Wallet, Truck, ArrowLeftRight, Gift, Landmark, Bell, Share2, MessageCircle, Network, Copy, Check, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import {
   getProcessingFeeSettings,
   updateProcessingFeeSettings,
 } from '@/services/api';
+import { toast } from 'sonner';
 
 const Settings = () => {
   const queryClient = useQueryClient();
@@ -52,11 +53,57 @@ const Settings = () => {
   const [savingNotifications, setSavingNotifications] = useState(false);
   const [savingEmailSocial, setSavingEmailSocial] = useState(false);
   const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+  const [copiedInvestorLink, setCopiedInvestorLink] = useState(false);
+  const [investorViewToken, setInvestorViewToken] = useState('');
+  const [savingInvestor, setSavingInvestor] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['processing-fee-settings'],
     queryFn: getProcessingFeeSettings,
   });
+
+  const investorShareUrl = React.useMemo(() => {
+    const token = investorViewToken.trim();
+    if (!token || typeof window === 'undefined') return null;
+    return `${window.location.origin}/investor/${token}`;
+  }, [investorViewToken]);
+
+  const generateInvestorToken = () => {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    setInvestorViewToken(token);
+  };
+
+  const copyInvestorLink = async () => {
+    if (!investorShareUrl) return;
+    try {
+      await navigator.clipboard.writeText(investorShareUrl);
+      setCopiedInvestorLink(true);
+      toast.success('Investor link copied');
+      window.setTimeout(() => setCopiedInvestorLink(false), 2000);
+    } catch {
+      toast.error('Could not copy link');
+    }
+  };
+
+  const handleSaveInvestor = async () => {
+    const token = investorViewToken.trim();
+    if (token && (token.length < 16 || !/^[A-Za-z0-9_-]+$/.test(token))) {
+      toast.error('Token must be at least 16 characters (letters, numbers, _ or -)');
+      return;
+    }
+    setSavingInvestor(true);
+    const result = await updateProcessingFeeSettings({
+      investor_view_token: token,
+    });
+    setSavingInvestor(false);
+    if (result) {
+      queryClient.setQueryData(['processing-fee-settings'], result);
+      setInvestorViewToken(result.investor_view_token ?? token);
+      void queryClient.invalidateQueries({ queryKey: ['investor-share-link'] });
+    }
+  };
 
   React.useEffect(() => {
     if (settings) {
@@ -86,6 +133,7 @@ const Settings = () => {
         settings.whatsapp_button_mode === 'suffix' ? 'suffix' : 'redirect'
       );
       setWhatsappButtonUrlBase(settings.whatsapp_button_url_base ?? '');
+      setInvestorViewToken(settings.investor_view_token ?? '');
     }
   }, [settings]);
 
@@ -215,6 +263,81 @@ const Settings = () => {
             Configure processing fees and the single treasury wallet used for all fees and payments (Jumia USDC, Amazon, etc.)
           </p>
         </div>
+
+        <Card className="bg-black/30 border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5" />
+              Investor view (read-only)
+            </CardTitle>
+            <CardDescription>
+              Set a secret token here, then share the URL with investors. They see TVP, fees, user growth, engagement, and anonymized recent transactions — no admin actions or personal data.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3 max-w-2xl">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-2xl">
+                <div className="space-y-2">
+                  <Label htmlFor="investor-view-token">Access token</Label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      id="investor-view-token"
+                      value={investorViewToken}
+                      onChange={(e) => setInvestorViewToken(e.target.value)}
+                      placeholder="Generate or paste a long secret token"
+                      className="bg-white/5 border-white/10 font-mono text-xs sm:text-sm"
+                    />
+                    <Button type="button" variant="outline" onClick={generateInvestorToken} className="shrink-0">
+                      Generate
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    At least 16 characters. Changing or regenerating the token immediately revokes old links.
+                  </p>
+                </div>
+
+                {investorShareUrl && (
+                  <div className="space-y-2">
+                    <Label>Share URL</Label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        readOnly
+                        value={investorShareUrl}
+                        className="bg-white/5 border-white/10 font-mono text-xs sm:text-sm"
+                      />
+                      <div className="flex gap-2 shrink-0">
+                        <Button type="button" variant="secondary" onClick={() => void copyInvestorLink()}>
+                          {copiedInvestorLink ? (
+                            <Check className="mr-2 h-4 w-4" />
+                          ) : (
+                            <Copy className="mr-2 h-4 w-4" />
+                          )}
+                          {copiedInvestorLink ? 'Copied' : 'Copy'}
+                        </Button>
+                        <Button type="button" variant="outline" asChild>
+                          <a href={investorShareUrl} target="_blank" rel="noreferrer">
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Open
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={() => void handleSaveInvestor()} disabled={savingInvestor} className="w-fit">
+                  <Save className="mr-2 h-4 w-4" />
+                  {savingInvestor ? 'Saving...' : 'Save investor token'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="bg-black/30 border-white/10">
           <CardHeader>

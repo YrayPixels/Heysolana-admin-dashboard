@@ -2,12 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./components/AuthContext";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 import SignIn from "./pages/SignIn";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
+import InvestorView from "./pages/InvestorView";
 import UserDistribution from "./pages/UserDistribution";
 import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
@@ -98,14 +99,18 @@ const MerchantProtectedRoute = ({ children }: { children: JSX.Element }) => {
 };
 
 const AppRoutes = () => {
+  const location = useLocation();
   const { isLoggedIn, isLoading, needsVerification } = useAuth();
+  const isInvestorRoute = location.pathname.startsWith("/investor/");
 
-  if (isLoading) {
+  if (isLoading && !isInvestorRoute) {
     return <LoadingSpinner />;
   }
 
   return (
     <Routes>
+      <Route path="/investor/:token" element={<InvestorView />} />
+
       <Route
         path="/"
         element={
