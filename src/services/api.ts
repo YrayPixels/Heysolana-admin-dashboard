@@ -780,7 +780,7 @@ export interface InvestorShareLink {
 export interface InvestorSummaryResponse {
   success: boolean;
   generated_at: string;
-  days: number;
+  days: number | "all";
   cluster: string;
   transactions: {
     available: boolean;
@@ -835,9 +835,11 @@ export const getInvestorShareLink = async (): Promise<InvestorShareLink | null> 
   }
 };
 
+export type OverviewSummaryDays = 7 | 30 | 90 | 365 | "all";
+
 export const getInvestorSummary = async (
   token: string,
-  days: 7 | 30 | 90 = 30,
+  days: OverviewSummaryDays = "all",
   cluster: TransactionMetricsCluster = "mainnet"
 ): Promise<InvestorSummaryResponse | null> => {
   try {
@@ -845,10 +847,10 @@ export const getInvestorSummary = async (
       days: String(days),
       cluster,
     });
-    const response = await fetch(`${API_BASE_URL}/investor/summary?${params.toString()}`, {
+    const response = await fetch(`${API_BASE_URL}/overview/summary?${params.toString()}`, {
       headers: {
         "Content-Type": "application/json",
-        "X-Investor-Token": token,
+        "X-Overview-Token": token,
       },
     });
 
@@ -856,7 +858,7 @@ export const getInvestorSummary = async (
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         (errorData as { message?: string }).message ||
-          `Failed to fetch investor summary: ${response.statusText}`
+          `Failed to fetch overview summary: ${response.statusText}`
       );
     }
 

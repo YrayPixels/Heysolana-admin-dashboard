@@ -101,14 +101,17 @@ const MerchantProtectedRoute = ({ children }: { children: JSX.Element }) => {
 const AppRoutes = () => {
   const location = useLocation();
   const { isLoggedIn, isLoading, needsVerification } = useAuth();
-  const isInvestorRoute = location.pathname.startsWith("/investor/");
+  const isOverviewShareRoute =
+    location.pathname.startsWith("/overview/") ||
+    location.pathname.startsWith("/investor/");
 
-  if (isLoading && !isInvestorRoute) {
+  if (isLoading && !isOverviewShareRoute) {
     return <LoadingSpinner />;
   }
 
   return (
     <Routes>
+      <Route path="/overview/:token" element={<InvestorView />} />
       <Route path="/investor/:token" element={<InvestorView />} />
 
       <Route

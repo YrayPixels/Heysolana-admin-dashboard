@@ -65,7 +65,7 @@ const Settings = () => {
   const investorShareUrl = React.useMemo(() => {
     const token = investorViewToken.trim();
     if (!token || typeof window === 'undefined') return null;
-    return `${window.location.origin}/investor/${token}`;
+    return `${window.location.origin}/overview/${token}`;
   }, [investorViewToken]);
 
   const generateInvestorToken = () => {
@@ -80,7 +80,7 @@ const Settings = () => {
     try {
       await navigator.clipboard.writeText(investorShareUrl);
       setCopiedInvestorLink(true);
-      toast.success('Investor link copied');
+      toast.success('Overview link copied');
       window.setTimeout(() => setCopiedInvestorLink(false), 2000);
     } catch {
       toast.error('Could not copy link');
@@ -268,10 +268,10 @@ const Settings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Share2 className="h-5 w-5" />
-              Investor view (read-only)
+              Shared operations overview
             </CardTitle>
             <CardDescription>
-              Set a secret token here, then share the URL with investors. They see TVP, fees, user growth, engagement, and anonymized recent transactions — no admin actions or personal data.
+              Set a secret token here, then share the read-only URL. It shows TVP, fees, user growth, engagement, and anonymized recent transactions — no admin actions or personal data.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -332,7 +332,7 @@ const Settings = () => {
 
                 <Button onClick={() => void handleSaveInvestor()} disabled={savingInvestor} className="w-fit">
                   <Save className="mr-2 h-4 w-4" />
-                  {savingInvestor ? 'Saving...' : 'Save investor token'}
+                  {savingInvestor ? 'Saving...' : 'Save overview token'}
                 </Button>
               </div>
             )}

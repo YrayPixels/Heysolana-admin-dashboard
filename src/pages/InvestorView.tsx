@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import {
   getInvestorSummary,
   type InvestorSummaryResponse,
+  type OverviewSummaryDays,
   type TransactionMetricsCluster,
 } from "@/services/api";
 
@@ -36,10 +37,12 @@ const currency = new Intl.NumberFormat("en-US", {
 
 const number = new Intl.NumberFormat("en-US");
 
-const dayOptions: Array<{ label: string; value: 7 | 30 | 90 }> = [
-  { label: "7D", value: 7 },
-  { label: "30D", value: 30 },
+const dayOptions: Array<{ label: string; value: OverviewSummaryDays }> = [
+  { label: "All time", value: "all" },
+  { label: "1Y", value: 365 },
   { label: "90D", value: 90 },
+  { label: "30D", value: 30 },
+  { label: "7D", value: 7 },
 ];
 
 const clusterOptions: Array<{ label: string; value: TransactionMetricsCluster }> = [
@@ -56,7 +59,7 @@ function formatDateLabel(date: string) {
 
 const InvestorView: React.FC = () => {
   const { token = "" } = useParams<{ token: string }>();
-  const [days, setDays] = useState<7 | 30 | 90>(30);
+  const [days, setDays] = useState<OverviewSummaryDays>("all");
   const [cluster, setCluster] = useState<TransactionMetricsCluster>("mainnet");
   const [data, setData] = useState<InvestorSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,7 +80,7 @@ const InvestorView: React.FC = () => {
 
       const result = await getInvestorSummary(token, days, cluster);
       if (!result) {
-        setError("Unable to load investor summary. Check the link or try again.");
+        setError("Unable to load overview. Check the link or try again.");
         setData(null);
       } else {
         setData(result);
@@ -111,7 +114,7 @@ const InvestorView: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center p-6">
         <GlassCard className="max-w-md w-full text-center space-y-4">
-          <h1 className="text-xl font-semibold">Investor view unavailable</h1>
+          <h1 className="text-xl font-semibold">Overview unavailable</h1>
           <p className="text-gray-400 text-sm">{error ?? "No data returned."}</p>
           <Button
             variant="outline"
@@ -134,13 +137,13 @@ const InvestorView: React.FC = () => {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 space-y-8">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-solana text-sm font-medium mb-2">HeySolana · Investor overview</p>
+            <p className="text-solana text-sm font-medium mb-2">HeySolana · Shared overview</p>
             <h1 className="text-3xl sm:text-4xl font-bold mb-2">
               <AnimatedText gradient>Operations summary</AnimatedText>
             </h1>
             <p className="text-gray-400 text-sm sm:text-base max-w-2xl">
               View-only snapshot of volume, users, and engagement. No personal
-              account data is shown.
+              account data is shown. Totals default to all-time confirmed volume.
             </p>
             <p className="text-xs text-gray-500 mt-2">
               Updated {new Date(data.generated_at).toLocaleString()}
@@ -190,7 +193,9 @@ const InvestorView: React.FC = () => {
         <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <GlassCard className="bg-gradient-to-br from-emerald-500/20 to-transparent">
             <TrendingUp className="w-8 h-8 mb-3 text-emerald-400" />
-            <p className="text-gray-400 text-sm">Total volume (TVP)</p>
+            <p className="text-gray-400 text-sm">
+              Total volume (TVP){data.days === "all" ? " · all time" : ""}
+            </p>
             <h3 className="text-2xl font-bold text-emerald-400">
               {currency.format(tx.summary?.total_input_usd ?? 0)}
             </h3>
