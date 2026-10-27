@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -24,6 +24,7 @@ import GlassCard from "@/components/ui-custom/GlassCard";
 import { Button } from "@/components/ui/button";
 import {
   getInvestorSummary,
+  sanitizeOverviewToken,
   type InvestorSummaryResponse,
   type OverviewSummaryDays,
   type TransactionMetricsCluster,
@@ -58,13 +59,24 @@ function formatDateLabel(date: string) {
 }
 
 const InvestorView: React.FC = () => {
-  const { token = "" } = useParams<{ token: string }>();
+  const { token: rawToken = "" } = useParams<{ token: string }>();
+  const navigate = useNavigate();
+  const token = useMemo(() => sanitizeOverviewToken(rawToken), [rawToken]);
   const [days, setDays] = useState<OverviewSummaryDays>("all");
   const [cluster, setCluster] = useState<TransactionMetricsCluster>("mainnet");
   const [data, setData] = useState<InvestorSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Rewrite corrupted share URLs (e.g. U+FFFD from copy/paste) to a clean path.
+  useEffect(() => {
+    if (!token || token === rawToken) return;
+    const prefix = window.location.pathname.startsWith("/investor/")
+      ? "/investor/"
+      : "/overview/";
+    navigate(`${prefix}${token}${window.location.search}`, { replace: true });
+  }, [rawToken, token, navigate]);
 
   const fetchSummary = useCallback(
     async (refresh = false) => {

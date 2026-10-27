@@ -837,12 +837,28 @@ export const getInvestorShareLink = async (): Promise<InvestorShareLink | null> 
 
 export type OverviewSummaryDays = 7 | 30 | 90 | 365 | "all";
 
+/** Strip copy/paste corruption (e.g. U+FFFD) so tokens are safe for HTTP headers. */
+export const sanitizeOverviewToken = (raw: string): string => {
+  let decoded = raw.trim();
+  try {
+    decoded = decodeURIComponent(decoded);
+  } catch {
+    // keep raw trimmed value
+  }
+  return decoded.replace(/[^A-Za-z0-9_-]/g, "");
+};
+
 export const getInvestorSummary = async (
   token: string,
   days: OverviewSummaryDays = "all",
   cluster: TransactionMetricsCluster = "mainnet"
 ): Promise<InvestorSummaryResponse | null> => {
   try {
+    const safeToken = sanitizeOverviewToken(token);
+    if (!safeToken) {
+      throw new Error("Missing or invalid overview token");
+    }
+
     const params = new URLSearchParams({
       days: String(days),
       cluster,
@@ -850,7 +866,7 @@ export const getInvestorSummary = async (
     const response = await fetch(`${API_BASE_URL}/overview/summary?${params.toString()}`, {
       headers: {
         "Content-Type": "application/json",
-        "X-Overview-Token": token,
+        "X-Overview-Token": safeToken,
       },
     });
 
