@@ -14,6 +14,8 @@ import {
 import {
   Activity,
   ArrowDownUp,
+  ChevronLeft,
+  ChevronRight,
   Coins,
   RefreshCw,
   TrendingUp,
@@ -24,9 +26,11 @@ import GlassCard from "@/components/ui-custom/GlassCard";
 import { Button } from "@/components/ui/button";
 import {
   getInvestorSummary,
+  getOverviewTransactions,
   sanitizeOverviewToken,
   type InvestorSummaryResponse,
   type OverviewSummaryDays,
+  type OverviewTransaction,
   type TransactionMetricsCluster,
 } from "@/services/api";
 
@@ -58,6 +62,14 @@ function formatDateLabel(date: string) {
   });
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  internet: "merchant settlement",
+};
+
+function typeLabel(value: string) {
+  return TYPE_LABELS[value] ?? value.replace(/_/g, " ");
+}
+
 const InvestorView: React.FC = () => {
   const { token: rawToken = "" } = useParams<{ token: string }>();
   const navigate = useNavigate();
@@ -68,6 +80,14 @@ const InvestorView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<OverviewTransaction[]>([]);
+  const [txMeta, setTxMeta] = useState<{
+    current_page: number;
+    last_page: number;
+    total: number;
+  } | null>(null);
+  const [txPage, setTxPage] = useState(1);
+  const [txLoading, setTxLoading] = useState(true);
 
   // Rewrite corrupted share URLs (e.g. U+FFFD from copy/paste) to a clean path.
   useEffect(() => {
@@ -107,6 +127,32 @@ const InvestorView: React.FC = () => {
   useEffect(() => {
     void fetchSummary(false);
   }, [fetchSummary]);
+
+  useEffect(() => {
+    setTxPage(1);
+  }, [days, cluster]);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    setTxLoading(true);
+
+    getOverviewTransactions(token, {
+      days,
+      cluster,
+      page: txPage,
+      per_page: 25,
+    }).then((result) => {
+      if (cancelled) return;
+      setTransactions(result?.data ?? []);
+      setTxMeta(result?.meta ?? null);
+      setTxLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, days, cluster, txPage]);
 
   const topType = useMemo(() => {
     return [...(data?.transactions.by_type ?? [])].sort(
@@ -361,14 +407,20 @@ const InvestorView: React.FC = () => {
           <GlassCard>
             <h3 className="text-lg font-medium mb-1">Volume by type</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Top flow: {topType?.transaction_type ?? "—"}
+              Top flow:{" "}
+              {topType ? typeLabel(topType.transaction_type) : "—"}
             </p>
             <div className="h-64">
               {(tx.by_type ?? []).length === 0 ? (
                 <p className="text-sm text-gray-400">No breakdown yet.</p>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={tx.by_type.slice(0, 8)}>
+                  <BarChart
+                    data={tx.by_type.slice(0, 8).map((row) => ({
+                      ...row,
+                      transaction_type: typeLabel(row.transaction_type),
+                    }))}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                     <XAxis dataKey="transaction_type" stroke="#777" fontSize={11} />
                     <YAxis stroke="#777" fontSize={12} tickFormatter={(v) => `$${Number(v)}`} />
@@ -390,16 +442,50 @@ const InvestorView: React.FC = () => {
 
         <section>
           <GlassCard>
-            <div className="mb-4">
-              <h3 className="text-lg font-medium">Recent transactions</h3>
-              <p className="text-sm text-gray-500">
-                Latest confirmed activity across HeySolana products
-              </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-medium">All transactions</h3>
+                <p className="text-sm text-gray-500">
+                  {txMeta
+                    ? `${number.format(txMeta.total)} confirmed transaction${txMeta.total === 1 ? "" : "s"}${days !== "all" ? " in this window" : ""}`
+                    : "Confirmed activity across HeySolana products"}
+                </p>
+              </div>
+
+              {txMeta && txMeta.last_page > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={txPage <= 1 || txLoading}
+                    onClick={() => setTxPage((p) => Math.max(1, p - 1))}
+                    className="border-solana/20 hover:bg-solana/10"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs text-gray-400">
+                    Page {txMeta.current_page} of {txMeta.last_page}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={txPage >= txMeta.last_page || txLoading}
+                    onClick={() => setTxPage((p) => p + 1)}
+                    className="border-solana/20 hover:bg-solana/10"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
 
-            {(data.recent_transactions ?? []).length === 0 ? (
+            {txLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-solana" />
+              </div>
+            ) : transactions.length === 0 ? (
               <p className="text-sm text-gray-400 py-8 text-center">
-                No transactions yet.
+                No transactions in this window.
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -417,10 +503,10 @@ const InvestorView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.recent_transactions.map((row) => (
+                    {transactions.map((row) => (
                       <tr key={row.id} className="border-b border-white/5">
                         <td className="py-3 pr-3 capitalize">
-                          {row.transaction_type.replace(/_/g, " ")}
+                          {typeLabel(row.transaction_type)}
                         </td>
                         <td className="py-3 pr-3 capitalize text-gray-300">
                           {row.provider ?? "—"}

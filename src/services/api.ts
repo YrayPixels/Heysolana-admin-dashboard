@@ -885,6 +885,80 @@ export const getInvestorSummary = async (
   }
 };
 
+export interface OverviewTransaction {
+  id: number;
+  cluster: string;
+  transaction_type: string;
+  status: string;
+  provider: string | null;
+  app_called: string | null;
+  input_token_symbol: string | null;
+  input_amount_usd: number | null;
+  output_token_symbol: string | null;
+  output_amount_usd: number | null;
+  platform_fee_usd: number | null;
+  confirmed_at: string | null;
+  created_at: string | null;
+}
+
+export interface OverviewTransactionsResponse {
+  success: boolean;
+  data: OverviewTransaction[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+export const getOverviewTransactions = async (
+  token: string,
+  filters: {
+    days?: OverviewSummaryDays;
+    cluster?: TransactionMetricsCluster;
+    page?: number;
+    per_page?: number;
+  } = {}
+): Promise<OverviewTransactionsResponse | null> => {
+  try {
+    const safeToken = sanitizeOverviewToken(token);
+    if (!safeToken) {
+      throw new Error("Missing or invalid overview token");
+    }
+
+    const params = new URLSearchParams({
+      days: String(filters.days ?? "all"),
+      cluster: filters.cluster ?? "mainnet",
+    });
+    if (filters.page) params.set("page", String(filters.page));
+    if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+    const response = await fetch(
+      `${API_BASE_URL}/overview/transactions?${params.toString()}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Overview-Token": safeToken,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        (errorData as { message?: string }).message ||
+          `Failed to fetch overview transactions: ${response.statusText}`
+      );
+    }
+
+    return (await response.json()) as OverviewTransactionsResponse;
+  } catch (error) {
+    handleError(error);
+    return null;
+  }
+};
+
 // Get user distribution analytics
 export const getUserDistributionAnalytics = async (): Promise<UserDistributionData | null> => {
   try {
