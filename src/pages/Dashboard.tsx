@@ -16,15 +16,85 @@ import {
   Activity,
   BarChart3,
   Coins,
+  ExternalLink,
+  ArrowDownUp,
 } from "lucide-react";
 import GlassCard from "@/components/ui-custom/GlassCard";
 import AnimatedText from "@/components/ui-custom/AnimatedText";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import { useAuth } from "@/components/AuthContext";
-import { getTrackingData, TrackingData } from "@/services/api";
+import {
+  getTrackingData,
+  getAppTransactions,
+  TrackingData,
+  type AppTransaction,
+} from "@/services/api";
 import { useNavigate } from "react-router-dom";
+
+const currency = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 2,
+});
+
+const truncate = (value: string | null, start = 6, end = 4) => {
+  if (!value) return "—";
+  if (value.length <= start + end + 3) return value;
+  return `${value.slice(0, start)}...${value.slice(-end)}`;
+};
+
+const titleCase = (value: string | null) => {
+  if (!value) return "—";
+  return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const formatTokenAmount = (
+  amount: AppTransaction["input_amount"],
+  token: string | null
+) => {
+  if (amount == null || amount === "") return "—";
+  const formatted = Number(amount).toLocaleString(undefined, {
+    maximumFractionDigits: 6,
+  });
+  return token ? `${formatted} ${token}` : formatted;
+};
+
+const formatUsd = (value: AppTransaction["input_amount_usd"]) => {
+  const amount = Number(value ?? 0);
+  return amount > 0 ? currency.format(amount) : "—";
+};
+
+const formatDate = (iso: string | null) => {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+};
+
+const getStatusBadgeVariant = (
+  status: string
+): "default" | "secondary" | "destructive" | "outline" => {
+  switch (status) {
+    case "confirmed":
+      return "default";
+    case "failed":
+      return "destructive";
+    case "submitted":
+      return "secondary";
+    default:
+      return "outline";
+  }
+};
+
+const getExplorerUrl = (tx: AppTransaction) => {
+  if (!tx.signature) return null;
+  const clusterParam = tx.cluster === "devnet" ? "?cluster=devnet" : "";
+  return `https://solscan.io/tx/${tx.signature}${clusterParam}`;
+};
 
 type SevenDayRow = {
   date: string;
@@ -79,6 +149,10 @@ const getYAxisDomain = (
 
 const Dashboard: React.FC = () => {
   const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<AppTransaction[]>(
+    []
+  );
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -96,6 +170,21 @@ const Dashboard: React.FC = () => {
     };
 
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const response = await getAppTransactions({ per_page: 8, page: 1 });
+        setRecentTransactions(response?.data ?? []);
+      } catch (error) {
+        console.error("Error fetching recent transactions:", error);
+      } finally {
+        setTransactionsLoading(false);
+      }
+    };
+
+    fetchTransactions();
   }, []);
 
   const getTotalClicks = () =>
@@ -351,6 +440,125 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
           </div>
+        </GlassCard>
+
+        <GlassCard className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-medium">Recent Transactions</h3>
+              <p className="text-sm text-gray-500">
+                Latest app-originated wallet transactions
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/transaction-list")}
+              className="border-solana/20 hover:bg-solana/10"
+            >
+              <ArrowDownUp className="w-4 h-4 mr-2" />
+              View All
+            </Button>
+          </div>
+
+          {transactionsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-solana" />
+            </div>
+          ) : recentTransactions.length === 0 ? (
+            <p className="text-gray-400 text-sm py-8 text-center">
+              No transactions recorded yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-left text-gray-400">
+                    <th className="py-3 pr-3 font-medium">Transaction</th>
+                    <th className="py-3 pr-3 font-medium">User / Wallet</th>
+                    <th className="py-3 pr-3 font-medium">Type</th>
+                    <th className="py-3 pr-3 font-medium">Amount</th>
+                    <th className="py-3 pr-3 font-medium">USD</th>
+                    <th className="py-3 pr-3 font-medium">Status</th>
+                    <th className="py-3 pr-3 font-medium">Date</th>
+                    <th className="py-3 font-medium text-right">Explorer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentTransactions.map((tx) => {
+                    const explorerUrl = getExplorerUrl(tx);
+                    return (
+                      <tr
+                        key={tx.id}
+                        className="border-b border-white/5 cursor-pointer hover:bg-white/5"
+                        onClick={() =>
+                          navigate(`/transaction-list/${tx.id}`)
+                        }
+                      >
+                        <td className="py-3 pr-3">
+                          <div className="font-mono">
+                            {truncate(tx.signature)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {tx.cluster}
+                          </div>
+                        </td>
+                        <td className="py-3 pr-3">
+                          <div className="font-medium">
+                            {tx.username || tx.mobile_number || "Unknown user"}
+                          </div>
+                          <div className="font-mono text-xs text-gray-500">
+                            {truncate(tx.wallet_address)}
+                          </div>
+                        </td>
+                        <td className="py-3 pr-3">
+                          {titleCase(tx.transaction_type)}
+                        </td>
+                        <td className="py-3 pr-3 text-gray-300">
+                          {formatTokenAmount(
+                            tx.input_amount ?? tx.amount,
+                            tx.input_token_symbol ?? tx.token
+                          )}
+                        </td>
+                        <td className="py-3 pr-3 text-emerald-300">
+                          {formatUsd(tx.input_amount_usd)}
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Badge variant={getStatusBadgeVariant(tx.status)}>
+                            {titleCase(tx.status)}
+                          </Badge>
+                        </td>
+                        <td className="py-3 pr-3 text-gray-300">
+                          {formatDate(tx.confirmed_at ?? tx.created_at)}
+                        </td>
+                        <td className="py-3 text-right">
+                          {explorerUrl ? (
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Open transaction in Solscan"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <a
+                                href={explorerUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          ) : (
+                            <span className="text-gray-600">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </GlassCard>
       </div>
     </DashboardLayout>

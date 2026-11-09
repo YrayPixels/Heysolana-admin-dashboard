@@ -388,6 +388,90 @@ const InvestorView: React.FC = () => {
           </GlassCard>
         </section>
 
+        <section>
+          <GlassCard>
+            <div className="mb-4">
+              <h3 className="text-lg font-medium">Recent transactions</h3>
+              <p className="text-sm text-gray-500">
+                Latest confirmed activity across HeySolana products
+              </p>
+            </div>
+
+            {(data.recent_transactions ?? []).length === 0 ? (
+              <p className="text-sm text-gray-400 py-8 text-center">
+                No transactions yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-left text-gray-400">
+                      <th className="py-3 pr-3 font-medium">Type</th>
+                      <th className="py-3 pr-3 font-medium">Provider</th>
+                      <th className="py-3 pr-3 font-medium">App</th>
+                      <th className="py-3 pr-3 font-medium">Input</th>
+                      <th className="py-3 pr-3 font-medium">Output</th>
+                      <th className="py-3 pr-3 font-medium">Fee</th>
+                      <th className="py-3 pr-3 font-medium">Cluster</th>
+                      <th className="py-3 font-medium">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recent_transactions.map((row) => (
+                      <tr key={row.id} className="border-b border-white/5">
+                        <td className="py-3 pr-3 capitalize">
+                          {row.transaction_type.replace(/_/g, " ")}
+                        </td>
+                        <td className="py-3 pr-3 capitalize text-gray-300">
+                          {row.provider ?? "—"}
+                        </td>
+                        <td className="py-3 pr-3 text-gray-300">
+                          {row.app_called ?? "—"}
+                        </td>
+                        <td className="py-3 pr-3 text-gray-300">
+                          {row.input_amount_usd != null
+                            ? currency.format(row.input_amount_usd)
+                            : "—"}
+                          {row.input_token_symbol
+                            ? ` (${row.input_token_symbol})`
+                            : ""}
+                        </td>
+                        <td className="py-3 pr-3 text-gray-300">
+                          {row.output_amount_usd != null
+                            ? currency.format(row.output_amount_usd)
+                            : "—"}
+                          {row.output_token_symbol
+                            ? ` (${row.output_token_symbol})`
+                            : ""}
+                        </td>
+                        <td className="py-3 pr-3 text-purple-300">
+                          {row.platform_fee_usd != null
+                            ? currency.format(row.platform_fee_usd)
+                            : "—"}
+                        </td>
+                        <td className="py-3 pr-3 capitalize text-gray-300">
+                          {row.cluster}
+                        </td>
+                        <td className="py-3 text-gray-300">
+                          {row.confirmed_at ?? row.created_at
+                            ? new Date(
+                                row.confirmed_at ?? row.created_at ?? ""
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </GlassCard>
+        </section>
+
         <footer className="text-center text-xs text-gray-600 pb-8">
           Confidential · View only · HeySolana
         </footer>
